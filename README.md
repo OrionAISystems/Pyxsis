@@ -4,7 +4,7 @@ Lightweight, local-first Windows screenshots and recordings for people and agent
 
 ## Install and capture
 
-Download the x64 Windows installer from [Releases](https://github.com/OrionAISystems/Pyxsis/releases). Windows 10/11 with WebView2 is required. The installer installs per-user and offers a capture-folder chooser. The default is your **Windows Pictures known folder**, including redirected/OneDrive Pictures locations:
+Download the x64 Windows installer from [Releases](https://github.com/OrionAISystems/Pyxsis/releases). Windows 10/11 with WebView2 is required. The installer installs per-user, normally under `%LOCALAPPDATA%\Pyxsis`, and offers a separate capture-folder chooser. Remembered temporary installer QA locations are ignored as installation defaults. The default capture root is your **Windows Pictures known folder**, including redirected/OneDrive Pictures locations:
 
 ```text
 Pictures/
@@ -27,7 +27,7 @@ Shortcuts are configurable and registration failures are reported. Pyxsis does n
 
 ## Agent / CLI use
 
-`pyxsis-cli.exe` is installed beside `pyxsis.exe`. Use its absolute path, or add that installation folder to your user PATH manually. It works without running the GUI. There is no network service, MCP listener, account, telemetry, or upload path. In-app update checks are explicit user actions against GitHub.
+`pyxsis-cli.exe` is installed beside `pyxsis.exe`. The installer automatically adds that installation folder to your user PATH. Open a new terminal (or restart an agent host such as Codex) after installation to pick up the change; existing processes can use its absolute path immediately. Updates avoid duplicate entries, and uninstall removes only the entry added by the installer. It works without running the GUI. There is no network service, MCP listener, account, telemetry, or upload path. In-app update checks are explicit user actions against GitHub.
 
 ```powershell
 pyxsis-cli targets

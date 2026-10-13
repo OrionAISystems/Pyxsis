@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0 — 2026-10-13
+
+- Ignore leftover TEMP installer QA locations when choosing the production installation default, while preserving explicit installation folders.
+- Automatically register the bundled CLI on user PATH during installation and updates; uninstall removes only the installer-owned entry. Restart existing terminals or agent hosts to inherit the updated PATH.
+
 ## 0.1.0 — 2026-10-13
 
 - Native Windows region selection, lossless PNG screenshots, and clipboard copy.

@@ -2,6 +2,7 @@ use anyhow::{bail, Result};
 use clap::{Args, Parser, Subcommand};
 use pyxsis_core::{desktop, recording, store, Region};
 use std::path::PathBuf;
+mod installer_path;
 
 #[derive(Parser)]
 #[command(
@@ -15,6 +16,12 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
+    /// Installer-only maintenance of the current user's PATH.
+    #[command(hide = true)]
+    InstallerPath {
+        #[arg(long)]
+        remove: bool,
+    },
     /// Enumerate monitors and visible windows in physical desktop coordinates.
     Targets,
     /// Capture a lossless PNG. Window captures contain visible desktop pixels, including occlusion.
@@ -90,6 +97,10 @@ fn run() -> Result<serde_json::Value> {
     desktop::init_dpi();
     let cli = Cli::parse();
     Ok(match cli.command {
+        Commands::InstallerPath { remove } => {
+            installer_path::update(remove)?;
+            serde_json::json!({"ok":true})
+        }
         Commands::Targets => {
             serde_json::json!({"monitors":desktop::monitors(),"windows":desktop::windows(),"coordinate_space":"physical_desktop_pixels","window_capture":"visible_pixels"})
         }

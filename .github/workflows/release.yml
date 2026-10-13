@@ -45,6 +45,8 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Missing updater signing key' }
           npm run desktop:build
           if ($LASTEXITCODE -ne 0) { throw 'Signed build failed' }
+          npm run test:installer-hooks
+          if ($LASTEXITCODE -ne 0) { throw 'Installer location hook checks failed' }
           node scripts/prepare-release.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Signature verification or artifact preparation failed' }
       - name: Publish verified artifacts

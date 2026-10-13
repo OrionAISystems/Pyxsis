@@ -4,11 +4,37 @@
 Var PyxsisCaptureRoot
 Var PyxsisCaptureInput
 Var PyxsisCaptureDialog
+Var PyxsisInstallLocationChecked
+
+; Older installer QA could leave its TEMP location registered. Do not offer
+; that development fixture as a production default. Explicit /D locations and
+; ordinary user-selected install folders remain unchanged.
+Function PyxsisCheckInstallLocation
+  ${If} $PyxsisInstallLocationChecked == "1"
+    Return
+  ${EndIf}
+  StrCpy $PyxsisInstallLocationChecked "1"
+  ; NSIS removes its own /D argument from $CMDLINE; inspect the original
+  ; Windows command line so an explicit TEMP test directory remains valid.
+  System::Call 'kernel32::GetCommandLineW() t.r0'
+  ClearErrors
+  ${GetOptions} $0 "/D=" $1
+  ${IfNot} ${Errors}
+    Return
+  ${EndIf}
+  StrCpy $0 "$TEMP\pyxsis-installer-qa-"
+  StrLen $1 $0
+  StrCpy $2 $INSTDIR $1
+  ${If} $2 == $0
+    StrCpy $INSTDIR "$LOCALAPPDATA\Pyxsis"
+  ${EndIf}
+FunctionEnd
 
 ; Registered before the stock Tauri pages: a small, explicit storage-choice page.
 Page custom PyxsisCapturesPage PyxsisCapturesLeave
 
 Function PyxsisCapturesPage
+  Call PyxsisCheckInstallLocation
   ${GetOptions} $CMDLINE "/P" $0
   ${IfNot} ${Errors}
     Abort
@@ -71,6 +97,13 @@ Function PyxsisCapturesLeave
 FunctionEnd
 
 !macro NSIS_HOOK_POSTINSTALL
+  nsExec::ExecToStack '"$INSTDIR\pyxsis-cli.exe" installer-path'
+  Pop $0
+  Pop $1
+  ${If} $0 != 0
+    DetailPrint "Could not register the CLI on user PATH: $1"
+    MessageBox MB_ICONEXCLAMATION "Pyxsis was installed, but could not add the CLI to your user PATH. Add the installation folder manually to use pyxsis-cli from a terminal." /SD IDOK
+  ${EndIf}
   ${If} $PyxsisCaptureRoot != ""
     WriteRegStr HKCU "Software\OrionAISystems\Pyxsis" "CaptureRoot" "$PyxsisCaptureRoot"
     nsExec::ExecToStack '"$INSTDIR\pyxsis-cli.exe" configure --capture-root "$PyxsisCaptureRoot"'
@@ -79,6 +112,22 @@ FunctionEnd
     ${If} $0 != 0
       MessageBox MB_ICONEXCLAMATION "Pyxsis was installed, but could not create your capture folders. Open Settings to choose a writable folder."
     ${EndIf}
+  ${EndIf}
+!macroend
+
+!macro NSIS_HOOK_PREINSTALL
+  ; Silent installation skips pages, so it still needs the default check.
+  Call PyxsisCheckInstallLocation
+  SetOutPath "$INSTDIR"
+!macroend
+
+!macro NSIS_HOOK_PREUNINSTALL
+  nsExec::ExecToStack '"$INSTDIR\pyxsis-cli.exe" installer-path --remove'
+  Pop $0
+  Pop $1
+  ${If} $0 != 0
+    DetailPrint "Could not remove the installer-owned user PATH entry: $1"
+    MessageBox MB_ICONEXCLAMATION "Pyxsis could not remove its user PATH entry. You can remove the installation folder from PATH manually." /SD IDOK
   ${EndIf}
 !macroend
 

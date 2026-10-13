@@ -1,6 +1,6 @@
 {
   "name": "pyxsis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,6 +12,7 @@
     "desktop:build": "node scripts/prepare-cli.mjs release && tauri build",
     "test": "cargo test -p pyxsis-core -p pyxsis-cli --locked",
     "verify:release": "node scripts/verify-release.mjs",
+    "test:installer-hooks": "node scripts/test-installer-hooks.mjs",
     "format": "prettier --write src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json",
     "format:check": "prettier --check src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json"
   },

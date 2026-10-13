@@ -55,6 +55,43 @@ fn dialog(pid: u32) -> Option<HWND> {
         Some(state.1 as HWND)
     }
 }
+fn user_path() -> String {
+    unsafe {
+        use windows_sys::Win32::System::Registry::*;
+        let mut length = 0;
+        let key = desktop::wide("Environment");
+        let name = desktop::wide("Path");
+        assert_eq!(
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                key.as_ptr(),
+                name.as_ptr(),
+                RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_NOEXPAND,
+                std::ptr::null_mut(),
+                std::ptr::null_mut(),
+                &mut length
+            ),
+            0
+        );
+        let mut value = vec![0u16; length as usize / 2];
+        assert_eq!(
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                key.as_ptr(),
+                name.as_ptr(),
+                RRF_RT_REG_SZ | RRF_RT_REG_EXPAND_SZ | RRF_NOEXPAND,
+                std::ptr::null_mut(),
+                value.as_mut_ptr().cast(),
+                &mut length
+            ),
+            0
+        );
+        while value.last() == Some(&0) {
+            value.pop();
+        }
+        String::from_utf16(&value).unwrap()
+    }
+}
 #[test]
 #[ignore = "installs only into a dedicated TEMP folder, then uninstalls; requires PYXSIS_INSTALLER"]
 fn installer_storage_choice_and_passive_preservation() {
@@ -79,6 +116,7 @@ fn installer_storage_choice_and_passive_preservation() {
         );
     }
     desktop::init_dpi();
+    let original_path = user_path();
     let installer = PathBuf::from(
         std::env::var("PYXSIS_INSTALLER").expect("Set PYXSIS_INSTALLER to the built installer"),
     );
@@ -249,6 +287,15 @@ fn installer_storage_choice_and_passive_preservation() {
         );
     }
     let _ = child.wait();
+    let installed_path = user_path();
+    assert_eq!(
+        installed_path
+            .split(';')
+            .filter(|entry| *entry == install.to_string_lossy())
+            .count(),
+        1,
+        "installer registers the CLI on user PATH once"
+    );
     // A passive updater invocation must not reset the configured capture root.
     let update = Command::new(&installer)
         .args(["/P", "/UPDATE"])
@@ -257,10 +304,24 @@ fn installer_storage_choice_and_passive_preservation() {
         .unwrap();
     assert!(update.success());
     assert_eq!(store::preferences().unwrap().capture_root, captures);
+    assert_eq!(
+        user_path(),
+        installed_path,
+        "passive updates do not duplicate PATH entries"
+    );
     let uninstall = install.join("uninstall.exe");
     assert!(uninstall.exists());
     let exit = Command::new(uninstall).arg("/S").status().unwrap();
     assert!(exit.success());
+    // NSIS bootstraps an uninstaller copy; wait for that child to finish cleanup.
+    let deadline = Instant::now() + Duration::from_secs(30);
+    while install.join("pyxsis-cli.exe").exists() || user_path() != original_path {
+        assert!(
+            Instant::now() < deadline,
+            "uninstall removes binaries and restores PATH"
+        );
+        thread::sleep(Duration::from_millis(100));
+    }
     assert!(
         captures.join("Pictures").is_dir(),
         "uninstall preserves captures"
