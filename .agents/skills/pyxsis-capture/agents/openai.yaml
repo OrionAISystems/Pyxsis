@@ -1,0 +1,4 @@
+interface:
+  display_name: "pyxsis-capture"
+  short_description: "Windows screenshots and recordings with Pyxsis CLI"
+  default_prompt: "Use $pyxsis-capture to capture the requested desktop window and return the saved artifact."

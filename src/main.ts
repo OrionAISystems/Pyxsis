@@ -1,7 +1,9 @@
 import './style.css';
 import { invoke, isTauri } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import { listen } from '@tauri-apps/api/event';
 import { check, type Update } from '@tauri-apps/plugin-updater';
+import { version as previewVersion } from '../package.json';
 
 type Preferences = {
   capture_root: string;
@@ -37,6 +39,7 @@ type Snapshot = {
   shortcut_error?: string | null;
 };
 const preview = !isTauri();
+let appVersion: string | null = preview ? previewVersion : null;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 let tab: 'capture' | 'settings' | 'agents' = 'capture';
 let state: Snapshot = {
@@ -67,6 +70,7 @@ const keys = (shortcut: string) =>
     .split('+')
     .map((k) => `<kbd>${esc(k === 'Super' ? 'Win' : k)}</kbd>`)
     .join('');
+const versionLabel = () => (appVersion ? `v${esc(appVersion)}` : 'Version unavailable');
 const active = () =>
   state.recording && ['starting', 'recording', 'finalizing'].includes(state.recording.state);
 function toast(message: string, error = false) {
@@ -132,7 +136,7 @@ function render() {
     )
     .join(
       '',
-    )}</nav><div class="sidebar-bottom"><span class="status-dot"></span>Local capture<span class="version">v0.1.0</span><p>${preview ? 'Browser preview · desktop controls unavailable' : 'Running in your tray'}</p></div></aside>
+    )}</nav><div class="sidebar-bottom"><span class="status-dot"></span>Local capture<span class="version">${versionLabel()}</span><p>${preview ? 'Browser preview · desktop controls unavailable' : 'Running in your tray'}</p></div></aside>
     <main><header><div><p class="eyebrow">LOCAL CAPTURE</p><h1>${tab === 'capture' ? 'Capture' : tab === 'settings' ? 'Settings' : 'Agent tools'}</h1></div><button class="button subtle" id="open-folder" ${preview ? 'disabled' : ''}>${icon('folder')}Open folder</button></header><div id="notice" class="notice" role="status"></div>${tab === 'capture' ? captureView() : tab === 'settings' ? settingsView() : agentsView()}<footer><span>No accounts. No uploads. Saved on your computer.</span><span>Pyxsis / Orion</span></footer></main>`;
   renderNotice();
   document.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(
@@ -240,7 +244,7 @@ function captureView() {
 }
 function settingsView() {
   const p = state.preferences;
-  return `<form id="settings-form"><section class="settings-section"><h2>Save location</h2><p>Your capture root contains separate Pictures and Recordings folders.</p><label for="capture-root">Capture folder</label><input id="capture-root" name="capture_root" value="${esc(p.capture_root)}" required ${preview ? 'disabled' : ''}/><div class="folder-preview">${icon('folder')}<span>Pictures / PNG screenshots<br>Recordings / MP4 videos</span></div></section><section class="settings-section"><h2>Capture preferences</h2><label class="toggle"><span><strong>Copy screenshots to clipboard</strong><small>A PNG is always saved, too.</small></span><input type="checkbox" name="copy_to_clipboard" ${p.copy_to_clipboard ? 'checked' : ''}/></label><label class="toggle"><span><strong>Include system audio in recordings</strong><small>Records your default playback device. Microphone stays off.</small></span><input type="checkbox" name="system_audio" ${p.system_audio ? 'checked' : ''}/></label><label for="fps">Recording frame rate</label><select name="fps" id="fps">${[15, 30, 60].map((fps) => `<option value="${fps}" ${p.fps === fps ? 'selected' : ''}>${fps} FPS</option>`).join('')}</select></section><section class="settings-section"><h2>Keyboard shortcuts</h2><p>Use modifiers such as Super, Ctrl, Alt, and Shift. Shortcuts are checked before saving.</p><div class="field-pair"><label>Screenshot<input name="screenshot_shortcut" value="${esc(p.screenshot_shortcut)}" required/></label><label>Record / stop<input name="recording_shortcut" value="${esc(p.recording_shortcut)}" required/></label></div><p class="muted">Win + Shift + S remains managed by Windows. See the README for replacement options.</p></section><button class="button primary" type="submit" ${busy || preview ? 'disabled' : ''}>${icon('check')}Save settings</button></form><section class="settings-section updates"><div><h2>Updates</h2><p>v0.1.0 · Signed updates from the public Pyxsis repository.</p></div><button class="button secondary" id="check-update" ${busy || preview ? 'disabled' : ''}>Check for updates</button>${update ? `<button class="button primary" id="install-update" ${active() || busy ? 'disabled' : ''}>Install ${esc(update.version)}</button>` : ''}</section>`;
+  return `<form id="settings-form"><section class="settings-section"><h2>Save location</h2><p>Your capture root contains separate Pictures and Recordings folders.</p><label for="capture-root">Capture folder</label><input id="capture-root" name="capture_root" value="${esc(p.capture_root)}" required ${preview ? 'disabled' : ''}/><div class="folder-preview">${icon('folder')}<span>Pictures / PNG screenshots<br>Recordings / MP4 videos</span></div></section><section class="settings-section"><h2>Capture preferences</h2><label class="toggle"><span><strong>Copy screenshots to clipboard</strong><small>A PNG is always saved, too.</small></span><input type="checkbox" name="copy_to_clipboard" ${p.copy_to_clipboard ? 'checked' : ''}/></label><label class="toggle"><span><strong>Include system audio in recordings</strong><small>Records your default playback device. Microphone stays off.</small></span><input type="checkbox" name="system_audio" ${p.system_audio ? 'checked' : ''}/></label><label for="fps">Recording frame rate</label><select name="fps" id="fps">${[15, 30, 60].map((fps) => `<option value="${fps}" ${p.fps === fps ? 'selected' : ''}>${fps} FPS</option>`).join('')}</select></section><section class="settings-section"><h2>Keyboard shortcuts</h2><p>Use modifiers such as Super, Ctrl, Alt, and Shift. Shortcuts are checked before saving.</p><div class="field-pair"><label>Screenshot<input name="screenshot_shortcut" value="${esc(p.screenshot_shortcut)}" required/></label><label>Record / stop<input name="recording_shortcut" value="${esc(p.recording_shortcut)}" required/></label></div><p class="muted">Win + Shift + S remains managed by Windows. See the README for replacement options.</p></section><button class="button primary" type="submit" ${busy || preview ? 'disabled' : ''}>${icon('check')}Save settings</button></form><section class="settings-section updates"><div><h2>Updates</h2><p>${versionLabel()} · Signed updates from the public Pyxsis repository.</p></div><button class="button secondary" id="check-update" ${busy || preview ? 'disabled' : ''}>Check for updates</button>${update ? `<button class="button primary" id="install-update" ${active() || busy ? 'disabled' : ''}>Install ${esc(update.version)}</button>` : ''}</section>`;
 }
 function agentsView() {
   const commands = [
@@ -257,6 +261,12 @@ function agentsView() {
 }
 render();
 if (!preview) {
+  try {
+    appVersion = await getVersion();
+    render();
+  } catch (e) {
+    toast('Unable to read the application version: ' + String(e), true);
+  }
   await refresh();
   await listen<string>('app-error', (e) => toast(e.payload, true));
   await listen('capture-changed', () => refresh());

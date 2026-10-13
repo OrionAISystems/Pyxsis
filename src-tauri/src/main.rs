@@ -379,7 +379,7 @@ fn main() {
                     window.hide()?;
                 }
             }
-            store::log_event("app.started", "0.1.0");
+            store::log_event("app.started", &app.package_info().version.to_string());
             Ok(())
         })
         .on_window_event(|window, event| {

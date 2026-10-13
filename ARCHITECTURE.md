@@ -30,6 +30,8 @@ The audio callback converts supported endpoint samples to interleaved PCM16 and 
 
 ## Desktop ownership
 
+Displayed versions come from Tauri's application metadata at runtime; browser previews use the package version. Startup logging reads the same application package metadata. Release verification checks that the package, crate, and installer versions agree. The repository's `.agents/skills/pyxsis-capture` workflow is a portable adapter guide for the installed CLI and is not part of the capture engine.
+
 The WebView is for settings, history, status, and explicit update actions. Region selection is a native topmost Win32 window, not a second WebView. Each monitor shows selection instructions. Closing the main window hides it. Global hotkeys and the tray remain available; the CLI remains usable without the GUI. A native recording control owns a separate UI thread and stays outside the recording rectangle. If no free corner exists, the shortcut/tray/CLI remain the stop controls. A lightweight recording-status observer updates the tray indicator and reports worker failures even when the WebView is hidden. The worker persists independently of the settings window. The app's single-instance plugin brings an existing window forward.
 
 Settings validate shortcut syntax and detect collisions, restoring previous registrations when registration or persistence fails. Capture content is always local. There is no background network listener or remote command path. Updater installation reserves the same recording lock, preventing a worker from starting while binaries are being replaced. The GUI also prevents starting capture during an update or a second region selection.

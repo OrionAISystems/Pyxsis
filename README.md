@@ -46,6 +46,12 @@ Command results are one JSON object on stdout; operational failures are JSON on 
 
 Coordinates are **physical desktop pixels**, including negative monitor origins. Monitor IDs come from `targets` and can change after display topology changes. Window matching accepts a numeric ID or a unique title substring. Window captures use the window's visible desktop rectangle; overlapping windows are included, and minimized windows are omitted. Recording a window selects its rectangle at start; it does not follow a moving window. PNGs are native resolution. MP4 dimensions round down to even pixels for H.264.
 
+### Agent skill
+
+The repository includes [pyxsis-capture](.agents/skills/pyxsis-capture/SKILL.md), a portable workflow for screenshots and requested recordings. It covers target discovery, descriptive filenames, configured save locations, artifact verification, and fallback when Pyxsis cannot capture a target. Install Pyxsis first; the skill uses the installed CLI.
+
+Codex discovers `.agents/skills` when working in this repository. To use the skill across projects, copy the entire `.agents/skills/pyxsis-capture` folder into your agent's user skill directory (for Codex, `~/.codex/skills/pyxsis-capture`). Refresh that copy when updating the workflow. Invoke `$pyxsis-capture`, or let the agent select it for desktop capture tasks. Other agents can load the same `SKILL.md` through their supported skill mechanism. Installation does not change your global agent instructions or preferred capture tools.
+
 ## Capture boundaries
 
 The first capture backend uses reusable GDI surfaces and the `windows-capture` native H.264/AAC encoder. WASAPI playback loopback is provided by CPAL. GPU desktop capture is a future backend seam, not a claimed feature of this release.
@@ -85,7 +91,8 @@ cargo test -p pyxsis-cli --test live_capture -- --ignored --nocapture
 Installer QA is also opt-in and refuses to replace an existing installed Pyxsis. It uses a temporary installation, restores the previous preferences, and uninstalls its test application:
 
 ```powershell
-$env:PYXSIS_INSTALLER = (Resolve-Path 'target/release/bundle/nsis/Pyxsis_0.1.0_x64-setup.exe').Path
+$pyxsisVersion = (Get-Content package.json -Raw | ConvertFrom-Json).version
+$env:PYXSIS_INSTALLER = (Resolve-Path "target/release/bundle/nsis/Pyxsis_${pyxsisVersion}_x64-setup.exe").Path
 cargo test -p pyxsis-cli --test installer installer_storage -- --ignored --nocapture
 ```
 

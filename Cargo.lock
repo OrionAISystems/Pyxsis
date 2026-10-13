@@ -3065,7 +3065,7 @@ dependencies = [
 
 [[package]]
 name = "pyxsis"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "fs2",
  "pyxsis-core",
@@ -3080,7 +3080,7 @@ dependencies = [
 
 [[package]]
 name = "pyxsis-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3093,7 +3093,7 @@ dependencies = [
 
 [[package]]
 name = "pyxsis-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "cpal",

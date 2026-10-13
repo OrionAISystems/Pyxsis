@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — 2026-10-13
+
+- Read sidebar and update-section versions from the running application; browser previews use package metadata.
+- Log the actual application version at startup instead of a hardcoded release number.
+- Ship the portable pyxsis-capture agent skill under .agents/skills, with screenshot naming, target discovery, validation, and recording guidance.
+
 ## 0.2.0 — 2026-10-13
 
 - Ignore leftover TEMP installer QA locations when choosing the production installation default, while preserving explicit installation folders.
