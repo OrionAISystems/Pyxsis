@@ -1,0 +1,62 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: rustup update stable --no-self-update
+      - run: npm ci --no-audit --no-fund
+      - run: node scripts/prepare-cli.mjs debug
+      - name: Verify tag and source
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag and package versions differ' }
+          npm run verify:release
+          if ($LASTEXITCODE -ne 0) { throw 'Release configuration failed' }
+          npm run format:check
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend formatting failed' }
+          cargo fmt --all --check
+          if ($LASTEXITCODE -ne 0) { throw 'Formatting failed' }
+          cargo test --workspace --locked
+          if ($LASTEXITCODE -ne 0) { throw 'Tests failed' }
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          if ($LASTEXITCODE -ne 0) { throw 'Clippy failed' }
+      - name: Build signed installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Missing updater signing key' }
+          npm run desktop:build
+          if ($LASTEXITCODE -ne 0) { throw 'Signed build failed' }
+          node scripts/prepare-release.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Signature verification or artifact preparation failed' }
+      - name: Publish verified artifacts
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          gh release create $tag --repo $env:GITHUB_REPOSITORY --verify-tag --draft --title "Pyxsis $tag" --notes-file CHANGELOG.md
+          if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed' }
+          $artifacts = Get-ChildItem -LiteralPath target/public-release -File | ForEach-Object { $_.FullName }
+          gh release upload $tag @artifacts --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
+          gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
+          node scripts/verify-release.mjs --public
+          if ($LASTEXITCODE -ne 0) { throw 'Public updater verification failed' }

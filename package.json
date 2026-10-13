@@ -1,0 +1,28 @@
+{
+  "name": "pyxsis",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 1430 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "check": "tsc --noEmit",
+    "tauri": "tauri",
+    "desktop:dev": "node scripts/prepare-cli.mjs debug && tauri dev",
+    "desktop:build": "node scripts/prepare-cli.mjs release && tauri build",
+    "test": "cargo test -p pyxsis-core -p pyxsis-cli --locked",
+    "verify:release": "node scripts/verify-release.mjs",
+    "format": "prettier --write src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json",
+    "format:check": "prettier --check src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.12.3",
+    "@tauri-apps/plugin-updater": "2.13.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.2",
+    "prettier": "3.6.2",
+    "typescript": "7.0.2",
+    "vite": "8.2.1"
+  }
+}

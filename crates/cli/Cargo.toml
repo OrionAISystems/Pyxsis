@@ -1,0 +1,16 @@
+[package]
+name = "pyxsis-cli"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[dependencies]
+pyxsis-core = { path = "../capture-core" }
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+png = "0.18"
+windows = { version = "0.62", features = ["Media_MediaProperties","Media_Editing","Graphics_Imaging","Storage_Streams","Storage","Win32_System_WinRT"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation","Win32_Graphics_Gdi","Win32_System_LibraryLoader","Win32_UI_WindowsAndMessaging"] }

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Pyxsis",
+  "version": "0.1.0",
+  "identifier": "com.orionaisystems.pyxsis",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1430",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Pyxsis",
+        "width": 1020,
+        "height": 740,
+        "minWidth": 680,
+        "minHeight": 540,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "externalBin": ["binaries/pyxsis-cli"],
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "publisher": "Orion AI Systems",
+    "category": "Utility",
+    "shortDescription": "Local screenshots and recordings for people and agents",
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "startMenuFolder": "Pyxsis",
+        "installerHooks": "installer/hooks.nsh"
+      },
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
+    },
+    "licenseFile": "../LICENSE",
+    "resources": {
+      "../THIRD_PARTY_NOTICES.md": "THIRD_PARTY_NOTICES.md"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMzMTUyNEZEMkUxOTc4OTUKUldTVmVCa3UvU1FWTTVZK0NweXcrdHZscWZyaURFRHcxdzF0bytKSkN5QXUxQnkxbERBMTVkN3cK",
+      "endpoints": [
+        "https://github.com/OrionAISystems/Pyxsis/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

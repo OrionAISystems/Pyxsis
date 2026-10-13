@@ -1,0 +1,20 @@
+[package]
+name = "pyxsis"
+version = "0.1.0"
+description = "Local screenshots and recordings for people and agents"
+authors = ["Orion AI Systems"]
+edition = "2021"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "2.11.5", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2.3.2"
+tauri-plugin-single-instance = "2.4.4"
+tauri-plugin-updater = { version = "2.11.0", default-features = false, features = ["rustls-tls", "zip"] }
+pyxsis-core = { path = "../crates/capture-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+fs2 = "0.4"
