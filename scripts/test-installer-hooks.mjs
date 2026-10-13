@@ -9,10 +9,10 @@ assert.equal(process.platform, 'win32', 'Installer hooks require Windows and bun
 const compiler = join(process.env.LOCALAPPDATA, 'tauri', 'NSIS', 'makensis.exe');
 const root = mkdtempSync(join(tmpdir(), 'pyxsis-path-hook-check-'));
 try {
-  for (const mode of ['legacy', 'custom', 'explicit']) {
+  for (const mode of ['legacy', 'legacy-update', 'custom', 'explicit']) {
     const initial =
       mode === 'custom' ? '$LOCALAPPDATA\\ChosenPyxsis' : '$TEMP\\pyxsis-installer-qa-legacy\\App';
-    const expected = mode === 'legacy' ? '$LOCALAPPDATA\\Pyxsis' : initial;
+    const expected = mode.startsWith('legacy') ? '$LOCALAPPDATA\\Pyxsis' : initial;
     const exe = join(root, `${mode}.exe`);
     const script = join(root, `${mode}.nsi`);
     writeFileSync(
@@ -49,7 +49,11 @@ SectionEnd
     const compiled = spawnSync(compiler, ['/V2', script], { encoding: 'utf8' });
     assert.equal(compiled.status, 0, compiled.error?.message ?? compiled.stdout + compiled.stderr);
     const args =
-      mode === 'explicit' ? [`/D=${join(tmpdir(), 'pyxsis-installer-qa-legacy', 'App')}`] : [];
+      mode === 'explicit'
+        ? [`/D=${join(tmpdir(), 'pyxsis-installer-qa-legacy', 'App')}`]
+        : mode === 'legacy-update'
+          ? ['/P', '/UPDATE']
+          : [];
     const checked = spawnSync(exe, args, { timeout: 30_000 });
     assert.equal(
       checked.status,
