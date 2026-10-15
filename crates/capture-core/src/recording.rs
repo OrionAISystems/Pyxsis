@@ -1,3 +1,4 @@
+use crate::encoder::Encoder;
 use crate::{
     desktop::{self, Surface},
     store::{self, Artifact},
@@ -15,10 +16,6 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
-use windows_capture::encoder::{
-    AudioSettingsBuilder, ContainerSettingsBuilder, VideoEncoder, VideoSettingsBuilder,
-    VideoSettingsSubType,
-};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Session {
@@ -32,6 +29,23 @@ pub struct Session {
     pub duration_limit: u32,
     pub error: Option<String>,
     pub artifact: Option<Artifact>,
+    #[serde(default)]
+    pub metrics: RecordingMetrics,
+    #[serde(default)]
+    pub worker_pid: Option<u32>,
+}
+/// Submission metrics describe acquisition and encoder enqueueing, not encoded
+/// output frame counts. Older session files remain readable through serde defaults.
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordingMetrics {
+    pub frames_submitted: u64,
+    pub missed_frame_intervals: u64,
+    pub capture_ms: u64,
+    pub finalization_ms: u64,
+    pub acquisition_ms: u64,
+    pub cpu_ms: Option<u64>,
+    pub peak_private_bytes: usize,
 }
 fn lock(name: &str) -> Result<File> {
     fs::create_dir_all(store::data_dir())?;
@@ -101,6 +115,8 @@ pub fn start(
         duration_limit: duration,
         error: None,
         artifact: None,
+        metrics: RecordingMetrics::default(),
+        worker_pid: None,
     };
     store::atomic_json(&session_path(), &session)?;
     drop(check);
@@ -294,6 +310,7 @@ pub fn run_worker(id: &str) -> Result<()> {
     if session.id != id || session.state != "starting" {
         bail!("Stale or invalid recording session");
     }
+    session.worker_pid = Some(std::process::id());
     let result = record(&mut session);
     if let Err(error) = &result {
         session.state = "failed".into();
@@ -316,14 +333,9 @@ fn record(session: &mut Session) -> Result<()> {
     } else {
         None
     };
-    let audio = if let Some(audio) = &loopback {
-        AudioSettingsBuilder::new()
-            .sample_rate(audio.sample_rate)
-            .channel_count(audio.channels)
-            .bit_per_sample(16)
-    } else {
-        AudioSettingsBuilder::new().disabled(true)
-    };
+    let audio = loopback
+        .as_ref()
+        .map(|audio| (audio.sample_rate, audio.channels));
     let partial = session
         .path
         .with_file_name(format!(".pyxsis-{}.partial.mp4", session.id));
@@ -334,15 +346,8 @@ fn record(session: &mut Session) -> Result<()> {
         .context("Output already exists")?;
     drop(reservation);
     let result = (|| -> Result<Artifact> {
-        let mut encoder = VideoEncoder::new(
-            VideoSettingsBuilder::new(session.region.width, session.region.height)
-                .sub_type(VideoSettingsSubType::H264)
-                .frame_rate(session.fps)
-                .bitrate(12_000_000),
-            audio,
-            ContainerSettingsBuilder::new(),
-            &partial,
-        ).context("Windows could not initialize H.264/AAC encoding; try a smaller region or disable system audio")?;
+        let mut encoder = Encoder::new(&partial, session.region.width, session.region.height, session.fps, audio)
+            .context("Windows could not initialize H.264/AAC encoding; try a smaller region or disable system audio")?;
         let hud = desktop::RecordingHud::spawn(session.region, stop_path(&session.id))?;
         if let Some(audio) = &loopback {
             audio._stream.play()?;
@@ -351,15 +356,24 @@ fn record(session: &mut Session) -> Result<()> {
         session.started_at = store::now();
         store::atomic_json(&session_path(), session)?;
         store::log_event("recording.started", &session.id);
+        let cpu_start = process_cpu_ms().ok();
         let start = Instant::now();
         let interval = Duration::from_secs_f64(1.0 / session.fps as f64);
         let mut next_frame = start;
         let mut audio_sent = 0usize;
+        let mut acquisition_time = Duration::ZERO;
         let capture_result = (|| -> Result<()> {
             loop {
-                check_memory_budget()?;
+                session.metrics.peak_private_bytes = session
+                    .metrics
+                    .peak_private_bytes
+                    .max(check_memory_budget()?);
+                let acquired = Instant::now();
                 let timestamp = (start.elapsed().as_nanos() / 100) as i64;
-                encoder.send_frame_buffer(surface.frame()?, timestamp)?;
+                let frame = surface.frame()?;
+                acquisition_time += acquired.elapsed();
+                encoder.send_frame_buffer(frame, timestamp)?;
+                session.metrics.frames_submitted += 1;
                 if let Some(audio) = &mut loopback {
                     let clock_due =
                         (start.elapsed().as_secs_f64() * audio.sample_rate as f64) as usize;
@@ -377,6 +391,9 @@ fn record(session: &mut Session) -> Result<()> {
                 next_frame += interval;
                 let now = Instant::now();
                 if next_frame <= now {
+                    let missed =
+                        now.duration_since(next_frame).as_nanos() / interval.as_nanos() + 1;
+                    session.metrics.missed_frame_intervals += missed as u64;
                     next_frame = now + interval;
                 }
                 thread::sleep(next_frame.saturating_duration_since(now));
@@ -385,12 +402,24 @@ fn record(session: &mut Session) -> Result<()> {
         })();
         session.state = "finalizing".into();
         let capture_duration = start.elapsed();
+        session.metrics.capture_ms = capture_duration.as_millis() as u64;
+        session.metrics.acquisition_ms = acquisition_time.as_millis() as u64;
         if let Some(hud) = &hud {
             hud.finalizing();
         }
         store::atomic_json(&session_path(), session)?;
         // Finalize even when capture or audio fails so existing frames are recoverable.
-        encoder.finish()?;
+        let finalization_start = Instant::now();
+        let finalized = encoder.finish();
+        session.metrics.finalization_ms = finalization_start.elapsed().as_millis() as u64;
+        session.metrics.cpu_ms = cpu_start
+            .zip(process_cpu_ms().ok())
+            .map(|(start, end)| end.saturating_sub(start));
+        store::log_event(
+            "recording.metrics",
+            &serde_json::to_string(&session.metrics)?,
+        );
+        finalized?;
         capture_result?;
         desktop::replace_file(&partial, &session.path)?;
         Ok(Artifact {
@@ -420,7 +449,36 @@ fn record(session: &mut Session) -> Result<()> {
     store::log_event("recording.completed", &session.id);
     Ok(())
 }
-fn check_memory_budget() -> Result<()> {
+fn process_cpu_ms() -> Result<u64> {
+    use windows_sys::Win32::{
+        Foundation::FILETIME,
+        System::Threading::{GetCurrentProcess, GetProcessTimes},
+    };
+    unsafe {
+        let mut created: FILETIME = std::mem::zeroed();
+        let mut exited: FILETIME = std::mem::zeroed();
+        let mut kernel: FILETIME = std::mem::zeroed();
+        let mut user: FILETIME = std::mem::zeroed();
+        if GetProcessTimes(
+            GetCurrentProcess(),
+            &mut created,
+            &mut exited,
+            &mut kernel,
+            &mut user,
+        ) == 0
+        {
+            bail!(
+                "Cannot inspect recording CPU usage: {}",
+                std::io::Error::last_os_error()
+            );
+        }
+        let ticks = |value: FILETIME| {
+            (u64::from(value.dwHighDateTime) << 32) | u64::from(value.dwLowDateTime)
+        };
+        Ok((ticks(kernel) + ticks(user)) / 10_000)
+    }
+}
+fn check_memory_budget() -> Result<usize> {
     use windows_sys::Win32::System::{ProcessStatus::*, Threading::GetCurrentProcess};
     unsafe {
         let mut counters: PROCESS_MEMORY_COUNTERS_EX = std::mem::zeroed();
@@ -439,6 +497,6 @@ fn check_memory_budget() -> Result<()> {
         if counters.PrivateUsage > 512 * 1024 * 1024 {
             bail!("Recording exceeded its 512 MiB encoder memory budget; choose a smaller region or lower frame rate");
         }
+        Ok(counters.PrivateUsage)
     }
-    Ok(())
 }

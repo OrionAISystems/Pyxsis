@@ -16,7 +16,7 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Commands {
-    /// Installer-only maintenance of the current user's PATH.
+    /// Installer-only maintenance of user PATH and an existing startup registration.
     #[command(hide = true)]
     InstallerPath {
         #[arg(long)]
@@ -99,6 +99,11 @@ fn run() -> Result<serde_json::Value> {
     Ok(match cli.command {
         Commands::InstallerPath { remove } => {
             installer_path::update(remove)?;
+            let gui = std::env::current_exe()?
+                .parent()
+                .expect("CLI directory")
+                .join("pyxsis.exe");
+            pyxsis_core::startup::maintain_install(&gui, remove)?;
             serde_json::json!({"ok":true})
         }
         Commands::Targets => {
@@ -115,15 +120,16 @@ fn run() -> Result<serde_json::Value> {
             {
                 bail!("--select cannot be combined with target arguments");
             }
-            let region = if select {
-                match desktop::select_region()? {
-                    Some(r) => r,
-                    None => return Ok(serde_json::json!({"cancelled":true})),
+            if select {
+                match desktop::select_screenshot(output, clipboard)? {
+                    Some(artifact) => serde_json::to_value(artifact)?,
+                    None => serde_json::json!({"cancelled":true}),
                 }
             } else {
-                desktop::resolve(target.monitor, target.window.as_deref(), target.region)?
-            };
-            serde_json::to_value(desktop::screenshot(region, output, clipboard)?)?
+                let region =
+                    desktop::resolve(target.monitor, target.window.as_deref(), target.region)?;
+                serde_json::to_value(desktop::screenshot(region, output, clipboard)?)?
+            }
         }
         Commands::Record { command } => match command {
             Record::Start {

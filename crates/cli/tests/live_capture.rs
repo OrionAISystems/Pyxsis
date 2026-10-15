@@ -18,6 +18,9 @@ unsafe extern "system" fn fixture_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
         WM_PAINT => {
             let mut ps: PAINTSTRUCT = std::mem::zeroed();
             let dc = BeginPaint(hwnd, &mut ps);
+            let mut client: RECT = std::mem::zeroed();
+            GetClientRect(hwnd, &mut client);
+            FillRect(dc, &client, GetStockObject(BLACK_BRUSH) as HBRUSH);
             for (rect, color) in [
                 (
                     RECT {
@@ -87,6 +90,23 @@ struct Fixture {
     hwnd: usize,
     thread: Option<thread::JoinHandle<()>>,
 }
+struct CursorRestore(POINT);
+impl CursorRestore {
+    fn new() -> Self {
+        let mut point = unsafe { std::mem::zeroed() };
+        unsafe {
+            GetCursorPos(&mut point);
+        }
+        Self(point)
+    }
+}
+impl Drop for CursorRestore {
+    fn drop(&mut self) {
+        unsafe {
+            SetCursorPos(self.0.x, self.0.y);
+        }
+    }
+}
 impl Drop for Fixture {
     fn drop(&mut self) {
         unsafe {
@@ -142,7 +162,7 @@ fn fixture_pixels_and_recording_lifecycle() {
             DispatchMessageW(&msg);
         }
     });
-    let _fixture = Fixture {
+    let fixture = Fixture {
         hwnd: rx.recv().unwrap(),
         thread: Some(join),
     };
@@ -150,6 +170,10 @@ fn fixture_pixels_and_recording_lifecycle() {
     let directory = std::env::temp_dir().join(format!("pyxsis-fixture-{}", store::now()));
     std::fs::create_dir_all(&directory).unwrap();
     // Exercise the actual selector's cancel and drag paths over the opaque fixture.
+    let selection_cursor = CursorRestore::new();
+    unsafe {
+        SetCursorPos(x + 20, y + 20);
+    }
     let cancelled_path = directory.join("cancelled.png");
     let child = Command::new(env!("CARGO_BIN_EXE_pyxsis-cli"))
         .args([
@@ -190,14 +214,91 @@ fn fixture_pixels_and_recording_lifecycle() {
             (((py - desktop.y) as u32 & 0xffff) << 16 | ((px - desktop.x) as u32 & 0xffff)) as isize
         };
         SendMessageW(overlay, WM_LBUTTONDOWN, 1, point(x + 20, y + 20));
-        SendMessageW(overlay, WM_MOUSEMOVE, 1, point(x + 620, y + 340));
-        SendMessageW(overlay, WM_LBUTTONUP, 0, point(x + 620, y + 340));
+        SendMessageW(overlay, WM_MOUSEMOVE, 1, point(x + 500, y + 250));
+        SetCursorPos(x + 500, y + 250);
+    }
+    thread::sleep(Duration::from_millis(100));
+    unsafe {
+        UpdateWindow(overlay);
+    }
+    let selector_preview = desktop::screenshot(
+        pyxsis_core::Region {
+            x,
+            y,
+            width: 640,
+            height: 360,
+        },
+        Some(directory.join("selector-preview.png")),
+        false,
+    )
+    .unwrap();
+    unsafe {
+        let desktop = desktop::bounds();
+        let endpoint = ((((y + 340 - desktop.y) as u32 & 0xffff) << 16)
+            | ((x + 620 - desktop.x) as u32 & 0xffff)) as isize;
+        SendMessageW(overlay, WM_MOUSEMOVE, 1, endpoint);
+        SetCursorPos(x + 620, y + 340);
+        // Freeze regression: hide the source after the overlay has its snapshot.
+        // The saved screenshot must still contain the original synthetic pixels.
+        ShowWindow(fixture.hwnd as HWND, SW_HIDE);
+        SendMessageW(overlay, WM_LBUTTONUP, 0, endpoint);
     }
     let output = child.wait_with_output().unwrap();
     assert!(output.status.success(), "selected region capture");
     let selected: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(selected["width"], 600);
     assert_eq!(selected["height"], 320);
+    let decoder = png::Decoder::new(std::io::BufReader::new(
+        std::fs::File::open(&selected_path).unwrap(),
+    ));
+    let mut reader = decoder.read_info().unwrap();
+    let mut pixels = vec![0; reader.output_buffer_size().unwrap()];
+    reader.next_frame(&mut pixels).unwrap();
+    assert_eq!(
+        &pixels[(80 * 600 + 80) * 4..(80 * 600 + 80) * 4 + 4],
+        &[255, 0, 0, 255],
+        "selection saves frozen pixels after source disappears"
+    );
+    unsafe {
+        ShowWindow(fixture.hwnd as HWND, SW_SHOW);
+    }
+    thread::sleep(Duration::from_millis(200));
+    // Keyboard-only completion and reset, using client coordinates within the fixture.
+    let keyboard_path = directory.join("keyboard.png");
+    let mut previous_cursor: POINT = unsafe { std::mem::zeroed() };
+    unsafe {
+        GetCursorPos(&mut previous_cursor);
+        SetCursorPos(x + 20, y + 20);
+    }
+    thread::sleep(Duration::from_millis(100));
+    let child = Command::new(env!("CARGO_BIN_EXE_pyxsis-cli"))
+        .args([
+            "capture",
+            "--select",
+            "--output",
+            keyboard_path.to_str().unwrap(),
+        ])
+        .stdout(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    let overlay = find_overlay(child.id());
+    unsafe {
+        SendMessageW(overlay, WM_KEYDOWN, 0x20, 0); // Space: anchor
+        SendMessageW(overlay, WM_KEYDOWN, 0x08, 0); // Backspace: reset
+        SendMessageW(overlay, WM_KEYDOWN, 0x20, 0);
+        for _ in 0..3 {
+            SendMessageW(overlay, WM_KEYDOWN, 0x27, 0); // Right
+            SendMessageW(overlay, WM_KEYDOWN, 0x28, 0); // Down
+        }
+        SendMessageW(overlay, WM_KEYDOWN, 0x0d, 0); // Enter: capture
+        SetCursorPos(previous_cursor.x, previous_cursor.y);
+    }
+    let output = child.wait_with_output().unwrap();
+    assert!(output.status.success());
+    let keyboard: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(keyboard["width"], 3);
+    assert_eq!(keyboard["height"], 3);
+    drop(selection_cursor);
     let region = format!("{x},{y},640,360");
     let png = directory.join("pixels.png");
     let artifact = cli(&[
@@ -258,6 +359,9 @@ fn fixture_pixels_and_recording_lifecycle() {
     thread::sleep(Duration::from_secs(2));
     let completed = cli(&["record", "stop"]);
     assert_eq!(completed["state"], "completed");
+    assert!(completed["metrics"]["frames_submitted"].as_u64().unwrap() > 1);
+    assert!(completed["metrics"]["peak_private_bytes"].as_u64().unwrap() > 0);
+    println!("Recording metrics: {}", completed["metrics"]);
     assert!(completed["artifact"]["bytes"].as_u64().unwrap() > 1000);
     validate_media(&mp4, false);
     let audio_mp4 = directory.join("system-audio.mp4");
@@ -316,10 +420,115 @@ fn fixture_pixels_and_recording_lifecycle() {
         thread::sleep(Duration::from_millis(100));
     }
     assert_eq!(cli(&["record", "status"])["state"], "completed");
+    // Crash only the worker created by this test, never a pre-existing recording.
+    let crash_path = directory.join("interrupted.mp4");
+    let crashed = cli(&[
+        "record",
+        "start",
+        "--region",
+        &region,
+        "--output",
+        crash_path.to_str().unwrap(),
+        "--duration",
+        "30",
+    ]);
+    let pid = crashed["worker_pid"]
+        .as_u64()
+        .expect("worker publishes its own PID") as u32;
+    assert_eq!(cli(&["record", "status"])["id"], crashed["id"]);
+    thread::sleep(Duration::from_millis(300));
+    unsafe {
+        use windows_sys::Win32::System::Threading::*;
+        let worker = OpenProcess(PROCESS_TERMINATE | SYNCHRONIZATION_SYNCHRONIZE, 0, pid);
+        assert!(!worker.is_null());
+        assert_ne!(
+            TerminateProcess(worker, 77),
+            0,
+            "synthetic worker crash injection"
+        );
+        assert_eq!(WaitForSingleObject(worker, 5000), 0);
+        CloseHandle(worker);
+    }
+    // The startup grace period is deliberately preserved for slow machines.
+    thread::sleep(Duration::from_secs(16));
+    assert_eq!(cli(&["record", "status"])["state"], "interrupted");
+    let restarted_path = directory.join("restart.mp4");
+    let restarted = cli(&[
+        "record",
+        "start",
+        "--region",
+        &region,
+        "--output",
+        restarted_path.to_str().unwrap(),
+        "--duration",
+        "10",
+    ]);
+    thread::sleep(Duration::from_millis(1100));
+    assert_eq!(
+        cli(&["record", "stop"])["state"],
+        "completed",
+        "new worker can acquire the released lock after a crash"
+    );
+    println!("Crash recovery: interrupted status and subsequent start/stop passed");
+    // 1080p throughput, restricted to the enlarged opaque synthetic fixture.
+    let mut benchmark_ids = Vec::new();
+    if let Some(benchmark_monitor) = desktop::monitors()
+        .into_iter()
+        .find(|m| m.region.width >= 1920 && m.region.height >= 1080)
+    {
+        let bx = benchmark_monitor.region.x + (benchmark_monitor.region.width as i32 - 1920) / 2;
+        let by = benchmark_monitor.region.y + (benchmark_monitor.region.height as i32 - 1080) / 2;
+        unsafe {
+            SetWindowPos(
+                fixture.hwnd as HWND,
+                HWND_TOPMOST,
+                bx,
+                by,
+                1920,
+                1080,
+                SWP_SHOWWINDOW,
+            );
+        }
+        thread::sleep(Duration::from_millis(200));
+        let benchmark_region = format!("{bx},{by},1920,1080");
+        for fps in [15, 30, 60] {
+            let path = directory.join(format!("benchmark-1080p-{fps}.mp4"));
+            let session = cli(&[
+                "record",
+                "start",
+                "--region",
+                &benchmark_region,
+                "--output",
+                path.to_str().unwrap(),
+                "--duration",
+                "5",
+                "--fps",
+                &fps.to_string(),
+            ]);
+            for _ in 0..200 {
+                let state = cli(&["record", "status"]);
+                if state["state"] == "completed" {
+                    println!("1080p {fps} FPS benchmark: {}", state["metrics"]);
+                    break;
+                }
+                assert_ne!(state["state"], "failed", "benchmark failure: {state}");
+                thread::sleep(Duration::from_millis(100));
+            }
+            assert_eq!(cli(&["record", "status"])["state"], "completed");
+            benchmark_ids.push(session["id"].as_str().unwrap().to_string());
+        }
+    }
+    benchmark_ids.push(crashed["id"].as_str().unwrap().to_string());
+    benchmark_ids.push(restarted["id"].as_str().unwrap().to_string());
+    for id in benchmark_ids {
+        let _ = std::fs::remove_file(store::data_dir().join("history").join(format!("{id}.json")));
+    }
     // Keep known synthetic artifacts in TEMP for inspection; remove their private history entries.
     for id in [
+        selector_preview.id,
         artifact["id"].as_str().unwrap().to_string(),
         selected["id"].as_str().unwrap().to_string(),
+        keyboard["id"].as_str().unwrap().to_string(),
         session["id"].as_str().unwrap().to_string(),
         hud_session["id"].as_str().unwrap().to_string(),
         audio_session["id"].as_str().unwrap().to_string(),
@@ -421,7 +630,7 @@ fn validate_media(path: &Path, audio: bool) {
         for channel in 0..3 {
             assert!(
                 pixels[(y * 640 + x) * 4 + channel].abs_diff(expected[channel]) < 15,
-                "decoded H.264 color and orientation"
+                "decoded H.264 color and orientation: x={x}, y={y}, channel={channel}, actual={}, expected={}", pixels[(y * 640 + x) * 4 + channel], expected[channel]
             );
         }
     }

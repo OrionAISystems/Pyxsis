@@ -259,9 +259,46 @@ impl Drop for Surface {
     }
 }
 pub fn screenshot(region: Region, output: Option<PathBuf>, clipboard: bool) -> Result<Artifact> {
-    let path = store::output_path("screenshot", output)?;
     let mut surface = Surface::new(region)?;
-    let pixels = surface.frame()?;
+    save_screenshot(region, surface.frame()?, output, clipboard)
+}
+/// Interactive screenshots save the frozen pixels shown by the selector. This
+/// preserves transient menus even when foreground activation dismisses them.
+pub fn select_screenshot(output: Option<PathBuf>, clipboard: bool) -> Result<Option<Artifact>> {
+    let Some((region, background)) = select_frozen_region()? else {
+        return Ok(None);
+    };
+    let crop = Surface::new(region)?;
+    unsafe {
+        if BitBlt(
+            crop.dc,
+            0,
+            0,
+            region.width as i32,
+            region.height as i32,
+            background.dc,
+            region.x - background.region.x,
+            region.y - background.region.y,
+            SRCCOPY,
+        ) == 0
+        {
+            bail!("Cannot copy the selected desktop snapshot");
+        }
+        GdiFlush();
+        let pixels = std::slice::from_raw_parts(
+            crop.bits as *const u8,
+            region.width as usize * region.height as usize * 4,
+        );
+        save_screenshot(region, pixels, output, clipboard).map(Some)
+    }
+}
+fn save_screenshot(
+    region: Region,
+    pixels: &[u8],
+    output: Option<PathBuf>,
+    clipboard: bool,
+) -> Result<Artifact> {
+    let path = store::output_path("screenshot", output)?;
     let mut rgba = vec![0; pixels.len()];
     let stride = region.width as usize * 4;
     for y in 0..region.height as usize {
@@ -363,10 +400,13 @@ fn copy_bitmap(pixels: &[u8], region: Region) -> Result<()> {
 
 struct Selection {
     origin: Option<POINT>,
+    keyboard_motion_until: Option<std::time::Instant>,
     current: POINT,
     region: Option<Region>,
     desktop: Region,
     monitors: Vec<Region>,
+    background: Surface,
+    dimmed: Surface,
 }
 unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARAM) -> LRESULT {
     if msg == WM_NCCREATE {
@@ -385,14 +425,24 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
         match msg {
             WM_LBUTTONDOWN => {
                 let point = event_point;
+                state.keyboard_motion_until = None;
                 state.origin = Some(point);
                 state.current = point;
                 SetCapture(hwnd);
                 return 0;
             }
             WM_MOUSEMOVE => {
+                // Cursor warps can re-enter this procedure and also queue mouse
+                // motion. Keep the logical endpoint authoritative briefly after
+                // an arrow step; an actual click always uses its event position.
+                if state
+                    .keyboard_motion_until
+                    .is_some_and(|until| std::time::Instant::now() < until)
+                {
+                    return 0;
+                }
                 state.current = event_point;
-                InvalidateRect(hwnd, null(), 1);
+                InvalidateRect(hwnd, null(), 0);
                 return 0;
             }
             WM_LBUTTONUP => {
@@ -412,6 +462,64 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
                 DestroyWindow(hwnd);
                 return 0;
             }
+            WM_KEYDOWN if matches!(w as u16, VK_LEFT | VK_RIGHT | VK_UP | VK_DOWN) => {
+                let step = if GetKeyState(VK_SHIFT as i32) < 0 {
+                    10
+                } else {
+                    1
+                };
+                match w as u16 {
+                    VK_LEFT => state.current.x -= step,
+                    VK_RIGHT => state.current.x += step,
+                    VK_UP => state.current.y -= step,
+                    VK_DOWN => state.current.y += step,
+                    _ => {}
+                }
+                state.current.x = state.current.x.clamp(
+                    state.desktop.x,
+                    state.desktop.x + state.desktop.width as i32 - 1,
+                );
+                state.current.y = state.current.y.clamp(
+                    state.desktop.y,
+                    state.desktop.y + state.desktop.height as i32 - 1,
+                );
+                state.keyboard_motion_until =
+                    Some(std::time::Instant::now() + std::time::Duration::from_millis(100));
+                SetCursorPos(state.current.x, state.current.y);
+                InvalidateRect(hwnd, null(), 0);
+                return 0;
+            }
+            WM_KEYDOWN if matches!(w as u16, VK_SPACE | VK_RETURN) => {
+                if let Some(origin) = state.origin {
+                    let region = Region {
+                        x: origin.x.min(state.current.x),
+                        y: origin.y.min(state.current.y),
+                        width: origin.x.abs_diff(state.current.x),
+                        height: origin.y.abs_diff(state.current.y),
+                    };
+                    if let Ok(region) = region.validate(state.desktop) {
+                        state.region = Some(region);
+                        ReleaseCapture();
+                        DestroyWindow(hwnd);
+                    }
+                } else {
+                    state.origin = Some(state.current);
+                    InvalidateRect(hwnd, null(), 0);
+                }
+                return 0;
+            }
+            WM_KEYDOWN if w as u16 == VK_BACK => {
+                state.origin = None;
+                state.keyboard_motion_until = None;
+                ReleaseCapture();
+                InvalidateRect(hwnd, null(), 0);
+                return 0;
+            }
+            WM_DISPLAYCHANGE | WM_CANCELMODE => {
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            WM_ERASEBKGND => return 1,
             WM_KEYDOWN if w as u32 == VK_ESCAPE as u32 => {
                 DestroyWindow(hwnd);
                 return 0;
@@ -429,10 +537,36 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
                 let dc = BeginPaint(hwnd, &mut ps);
                 let mut r: RECT = std::mem::zeroed();
                 GetClientRect(hwnd, &mut r);
-                FillRect(dc, &r, GetStockObject(BLACK_BRUSH) as HBRUSH);
+                BitBlt(dc, 0, 0, r.right, r.bottom, state.dimmed.dc, 0, 0, SRCCOPY);
                 SetTextColor(dc, 0x00ffffff);
                 SetBkMode(dc, TRANSPARENT as i32);
-                let text = wide("Drag to select  ·  Esc / right-click to cancel");
+                let text = wide("Drag to capture  ·  Esc / right-click to cancel");
+                let keyboard = wide("Arrows: move  ·  Shift: 10 px  ·  Space / Enter: anchor or capture  ·  Backspace: reset");
+                let dpi = GetDpiForWindow(hwnd).max(96);
+                let font = CreateFontW(
+                    -((16 * dpi / 96) as i32),
+                    0,
+                    0,
+                    0,
+                    FW_MEDIUM as i32,
+                    0,
+                    0,
+                    0,
+                    DEFAULT_CHARSET as u32,
+                    OUT_DEFAULT_PRECIS as u32,
+                    CLIP_DEFAULT_PRECIS as u32,
+                    CLEARTYPE_QUALITY as u32,
+                    DEFAULT_PITCH as u32,
+                    wide("Segoe UI").as_ptr(),
+                );
+                let old_font = SelectObject(
+                    dc,
+                    if font.is_null() {
+                        GetStockObject(DEFAULT_GUI_FONT)
+                    } else {
+                        font
+                    },
+                );
                 for monitor in &state.monitors {
                     TextOutW(
                         dc,
@@ -441,8 +575,79 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
                         text.as_ptr(),
                         text.len() as i32 - 1,
                     );
+                    let mut help_rect = RECT {
+                        left: monitor.x - state.desktop.x + 28,
+                        top: monitor.y - state.desktop.y + 48,
+                        right: monitor.x - state.desktop.x + monitor.width as i32 - 28,
+                        bottom: monitor.y - state.desktop.y + 110,
+                    };
+                    DrawTextW(
+                        dc,
+                        keyboard.as_ptr(),
+                        keyboard.len() as i32 - 1,
+                        &mut help_rect,
+                        DT_WORDBREAK | DT_NOPREFIX,
+                    );
                 }
                 if let Some(origin) = state.origin {
+                    let left = origin.x.min(state.current.x) - state.desktop.x;
+                    let top = origin.y.min(state.current.y) - state.desktop.y;
+                    let width = origin.x.abs_diff(state.current.x) as i32;
+                    let height = origin.y.abs_diff(state.current.y) as i32;
+                    BitBlt(
+                        dc,
+                        left,
+                        top,
+                        width,
+                        height,
+                        state.background.dc,
+                        left,
+                        top,
+                        SRCCOPY,
+                    );
+                    let label = wide(&format!("{width} × {height} px"));
+                    let mut size: SIZE = std::mem::zeroed();
+                    GetTextExtentPoint32W(dc, label.as_ptr(), label.len() as i32 - 1, &mut size);
+                    size.cx += 20;
+                    size.cy += 12;
+                    // Keep the readout on the monitor containing the active endpoint.
+                    let monitor = state
+                        .monitors
+                        .iter()
+                        .find(|m| {
+                            state.current.x >= m.x
+                                && state.current.x < m.x + m.width as i32
+                                && state.current.y >= m.y
+                                && state.current.y < m.y + m.height as i32
+                        })
+                        .copied()
+                        .unwrap_or(state.desktop);
+                    let label_x = (left + width - size.cx).clamp(
+                        monitor.x - state.desktop.x,
+                        (monitor.x - state.desktop.x + monitor.width as i32 - size.cx)
+                            .max(monitor.x - state.desktop.x),
+                    );
+                    let label_y = (top + height + 10).clamp(
+                        monitor.y - state.desktop.y,
+                        (monitor.y - state.desktop.y + monitor.height as i32 - size.cy - 8)
+                            .max(monitor.y - state.desktop.y),
+                    );
+                    let label_rect = RECT {
+                        left: label_x,
+                        top: label_y,
+                        right: label_x + size.cx,
+                        bottom: label_y + size.cy,
+                    };
+                    let brush = CreateSolidBrush(0x00202020);
+                    FillRect(dc, &label_rect, brush);
+                    DeleteObject(brush);
+                    TextOutW(
+                        dc,
+                        label_x + 10,
+                        label_y + 6,
+                        label.as_ptr(),
+                        label.len() as i32 - 1,
+                    );
                     let pen = CreatePen(PS_SOLID, 2, 0x00ffffff);
                     let old_pen = SelectObject(dc, pen);
                     let old_brush = SelectObject(dc, GetStockObject(HOLLOW_BRUSH));
@@ -457,6 +662,10 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
                     SelectObject(dc, old_brush);
                     DeleteObject(pen);
                 }
+                SelectObject(dc, old_font);
+                if !font.is_null() {
+                    DeleteObject(font);
+                }
                 EndPaint(hwnd, &ps);
                 return 0;
             }
@@ -470,6 +679,9 @@ unsafe extern "system" fn overlay_proc(hwnd: HWND, msg: u32, w: WPARAM, l: LPARA
     DefWindowProcW(hwnd, msg, w, l)
 }
 pub fn select_region() -> Result<Option<Region>> {
+    Ok(select_frozen_region()?.map(|(region, _)| region))
+}
+fn select_frozen_region() -> Result<Option<(Region, Surface)>> {
     unsafe {
         static CLASS: OnceLock<u16> = OnceLock::new();
         let instance = GetModuleHandleW(null());
@@ -485,15 +697,37 @@ pub fn select_region() -> Result<Option<Region>> {
             RegisterClassW(&wc)
         });
         let desktop = bounds();
+        // Freeze the desktop before showing the overlay. Two owned DIBs keep desktop
+        // pixels local in memory and avoid transparent holes passing clicks through.
+        let mut background = Surface::new(desktop)?;
+        let pixels = background.frame()?;
+        let dimmed = Surface::new(desktop)?;
+        let dimmed_pixels = std::slice::from_raw_parts_mut(dimmed.bits as *mut u8, pixels.len());
+        for (source, target) in pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(dimmed_pixels.as_chunks_mut::<4>().0.iter_mut())
+        {
+            target[0] = source[0] / 2;
+            target[1] = source[1] / 2;
+            target[2] = source[2] / 2;
+            target[3] = 255;
+        }
+        let mut current: POINT = std::mem::zeroed();
+        GetCursorPos(&mut current);
         let mut state = Selection {
             origin: None,
-            current: std::mem::zeroed(),
+            keyboard_motion_until: None,
+            current,
             region: None,
             desktop,
             monitors: monitors().into_iter().map(|m| m.region).collect(),
+            background,
+            dimmed,
         };
         let hwnd = CreateWindowExW(
-            WS_EX_TOPMOST | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+            WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
             class.as_ptr(),
             wide("Pyxsis selection").as_ptr(),
             WS_POPUP,
@@ -509,7 +743,6 @@ pub fn select_region() -> Result<Option<Region>> {
         if hwnd.is_null() {
             bail!("Cannot open region selector");
         }
-        SetLayeredWindowAttributes(hwnd, 0, 150, LWA_ALPHA);
         ShowWindow(hwnd, SW_SHOW);
         SetForegroundWindow(hwnd);
         SetFocus(hwnd);
@@ -520,7 +753,7 @@ pub fn select_region() -> Result<Option<Region>> {
             DispatchMessageW(&msg);
         }
         std::thread::sleep(std::time::Duration::from_millis(120));
-        Ok(state.region)
+        Ok(state.region.map(|region| (region, state.background)))
     }
 }
 pub fn replace_file(from: &Path, to: &Path) -> Result<()> {

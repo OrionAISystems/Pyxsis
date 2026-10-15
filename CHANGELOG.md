@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0 — 2026-10-15
+
+- Freeze the desktop before native region selection and save the selected frozen pixels, preserving open tray menus and other transient content.
+- Keep the selected area undimmed, show live physical-pixel dimensions, and add arrow-key positioning, Shift acceleration, Space/Enter selection, and Backspace reset. Display changes cancel selection safely.
+- Add an opt-in Start with Windows setting that launches quietly in the tray. Updates preserve registration; uninstall removes its own entry.
+- Separate capture actions from app/navigation actions in the tray menu.
+- Replace the unbounded encoder-wrapper submission queue with a synchronous native Media Foundation sink writer and platform backpressure.
+- Expose recording submission/resource metrics and worker identity for diagnosis without adding capture-content logging.
+- Exclude Rust output from the frontend dev watcher so concurrent Windows builds do not crash Vite.
+- Expand opt-in synthetic verification for frozen screenshots, keyboard selection, worker-crash recovery, restart, and 1080p recording throughput.
+
 ## 0.3.0 — 2026-10-13
 
 - Read sidebar and update-section versions from the running application; browser previews use package metadata.

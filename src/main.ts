@@ -37,6 +37,7 @@ type Snapshot = {
   history: Artifact[];
   recording: Session | null;
   shortcut_error?: string | null;
+  start_with_windows: boolean;
 };
 const preview = !isTauri();
 let appVersion: string | null = preview ? previewVersion : null;
@@ -51,6 +52,7 @@ let state: Snapshot = {
     system_audio: false,
     fps: 30,
   },
+  start_with_windows: false,
   history: [],
   recording: null,
 };
@@ -87,9 +89,10 @@ function renderNotice() {
   }
 }
 async function refresh() {
-  if (preview) return;
+  if (preview || busy) return;
   try {
     const next = await invoke<Snapshot>('snapshot');
+    if (busy) return;
     const changed = JSON.stringify(next) !== JSON.stringify(state);
     state = next;
     if (next.shortcut_error && !notice)
@@ -178,6 +181,34 @@ function render() {
       (button) =>
         (button.onclick = () => action(() => invoke('open_capture', { id: button.dataset.open }))),
     );
+  document
+    .querySelector<HTMLInputElement>('#start-with-windows')
+    ?.addEventListener('change', async (event) => {
+      const checkbox = event.currentTarget as HTMLInputElement;
+      const enabled = checkbox.checked;
+      if (busy) {
+        checkbox.checked = state.start_with_windows;
+        return;
+      }
+      busy = true;
+      checkbox.disabled = true;
+      try {
+        await invoke('set_start_with_windows', { enabled });
+        state.start_with_windows = enabled;
+        toast(
+          enabled
+            ? 'Pyxsis will start in the tray when you sign in.'
+            : 'Start with Windows disabled.',
+        );
+      } catch (error) {
+        checkbox.checked = state.start_with_windows;
+        toast(String(error), true);
+      } finally {
+        busy = false;
+        checkbox.disabled = false;
+      }
+      // Startup applies immediately without discarding unsaved form edits.
+    });
   document.querySelector<HTMLFormElement>('#settings-form')?.addEventListener('submit', (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget as HTMLFormElement);
@@ -244,7 +275,7 @@ function captureView() {
 }
 function settingsView() {
   const p = state.preferences;
-  return `<form id="settings-form"><section class="settings-section"><h2>Save location</h2><p>Your capture root contains separate Pictures and Recordings folders.</p><label for="capture-root">Capture folder</label><input id="capture-root" name="capture_root" value="${esc(p.capture_root)}" required ${preview ? 'disabled' : ''}/><div class="folder-preview">${icon('folder')}<span>Pictures / PNG screenshots<br>Recordings / MP4 videos</span></div></section><section class="settings-section"><h2>Capture preferences</h2><label class="toggle"><span><strong>Copy screenshots to clipboard</strong><small>A PNG is always saved, too.</small></span><input type="checkbox" name="copy_to_clipboard" ${p.copy_to_clipboard ? 'checked' : ''}/></label><label class="toggle"><span><strong>Include system audio in recordings</strong><small>Records your default playback device. Microphone stays off.</small></span><input type="checkbox" name="system_audio" ${p.system_audio ? 'checked' : ''}/></label><label for="fps">Recording frame rate</label><select name="fps" id="fps">${[15, 30, 60].map((fps) => `<option value="${fps}" ${p.fps === fps ? 'selected' : ''}>${fps} FPS</option>`).join('')}</select></section><section class="settings-section"><h2>Keyboard shortcuts</h2><p>Use modifiers such as Super, Ctrl, Alt, and Shift. Shortcuts are checked before saving.</p><div class="field-pair"><label>Screenshot<input name="screenshot_shortcut" value="${esc(p.screenshot_shortcut)}" required/></label><label>Record / stop<input name="recording_shortcut" value="${esc(p.recording_shortcut)}" required/></label></div><p class="muted">Win + Shift + S remains managed by Windows. See the README for replacement options.</p></section><button class="button primary" type="submit" ${busy || preview ? 'disabled' : ''}>${icon('check')}Save settings</button></form><section class="settings-section updates"><div><h2>Updates</h2><p>${versionLabel()} · Signed updates from the public Pyxsis repository.</p></div><button class="button secondary" id="check-update" ${busy || preview ? 'disabled' : ''}>Check for updates</button>${update ? `<button class="button primary" id="install-update" ${active() || busy ? 'disabled' : ''}>Install ${esc(update.version)}</button>` : ''}</section>`;
+  return `<section class="settings-section"><h2>Windows startup</h2><label class="toggle"><span><strong>Start with Windows</strong><small>Launch quietly in the tray when you sign in. Applies immediately. Windows Startup apps can override this setting.</small></span><input id="start-with-windows" type="checkbox" ${state.start_with_windows ? 'checked' : ''} ${busy || preview ? 'disabled' : ''}/></label></section><form id="settings-form"><section class="settings-section"><h2>Save location</h2><p>Your capture root contains separate Pictures and Recordings folders.</p><label for="capture-root">Capture folder</label><input id="capture-root" name="capture_root" value="${esc(p.capture_root)}" required ${preview ? 'disabled' : ''}/><div class="folder-preview">${icon('folder')}<span>Pictures / PNG screenshots<br>Recordings / MP4 videos</span></div></section><section class="settings-section"><h2>Capture preferences</h2><label class="toggle"><span><strong>Copy screenshots to clipboard</strong><small>A PNG is always saved, too.</small></span><input type="checkbox" name="copy_to_clipboard" ${p.copy_to_clipboard ? 'checked' : ''}/></label><label class="toggle"><span><strong>Include system audio in recordings</strong><small>Records your default playback device. Microphone stays off.</small></span><input type="checkbox" name="system_audio" ${p.system_audio ? 'checked' : ''}/></label><label for="fps">Recording frame rate</label><select name="fps" id="fps">${[15, 30, 60].map((fps) => `<option value="${fps}" ${p.fps === fps ? 'selected' : ''}>${fps} FPS</option>`).join('')}</select></section><section class="settings-section"><h2>Keyboard shortcuts</h2><p>Use modifiers such as Super, Ctrl, Alt, and Shift. Shortcuts are checked before saving.</p><div class="field-pair"><label>Screenshot<input name="screenshot_shortcut" value="${esc(p.screenshot_shortcut)}" required/></label><label>Record / stop<input name="recording_shortcut" value="${esc(p.recording_shortcut)}" required/></label></div><p class="muted">Win + Shift + S remains managed by Windows. See the README for replacement options.</p></section><button class="button primary" type="submit" ${busy || preview ? 'disabled' : ''}>${icon('check')}Save settings</button></form><section class="settings-section updates"><div><h2>Updates</h2><p>${versionLabel()} · Signed updates from the public Pyxsis repository.</p></div><button class="button secondary" id="check-update" ${busy || preview ? 'disabled' : ''}>Check for updates</button>${update ? `<button class="button primary" id="install-update" ${active() || busy ? 'disabled' : ''}>Install ${esc(update.version)}</button>` : ''}</section>`;
 }
 function agentsView() {
   const commands = [

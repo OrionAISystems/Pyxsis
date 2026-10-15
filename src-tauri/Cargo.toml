@@ -1,6 +1,6 @@
 [package]
 name = "pyxsis"
-version = "0.3.0"
+version = "0.4.0"
 description = "Local screenshots and recordings for people and agents"
 authors = ["Orion AI Systems"]
 edition = "2021"

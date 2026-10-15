@@ -1,5 +1,7 @@
 pub mod desktop;
+mod encoder;
 pub mod recording;
+pub mod startup;
 pub mod store;
 
 use anyhow::{bail, Result};

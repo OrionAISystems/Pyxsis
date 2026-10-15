@@ -80,8 +80,6 @@ Pyxsis is MIT licensed. Dependencies retain their own licenses. This inventory i
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 | [source](https://crates.io/crates/cpufeatures/0.2.17) |
 | crc32fast | 1.5.2 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crc32fast/1.5.2) |
 | crossbeam-channel | 0.5.17 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crossbeam-channel/0.5.17) |
-| crossbeam-deque | 0.8.8 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crossbeam-deque/0.8.8) |
-| crossbeam-epoch | 0.9.21 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crossbeam-epoch/0.9.21) |
 | crossbeam-utils | 0.8.23 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crossbeam-utils/0.8.23) |
 | crypto-common | 0.1.7 | MIT OR Apache-2.0 | [source](https://crates.io/crates/crypto-common/0.1.7) |
 | cssparser | 0.37.0 | MPL-2.0 | [source](https://crates.io/crates/cssparser/0.37.0) |
@@ -113,7 +111,6 @@ Pyxsis is MIT licensed. Dependencies retain their own licenses. This inventory i
 | dtoa-short | 0.3.5 | MPL-2.0 | [source](https://crates.io/crates/dtoa-short/0.3.5) |
 | dunce | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 | [source](https://crates.io/crates/dunce/1.0.5) |
 | dyn-clone | 1.0.20 | MIT OR Apache-2.0 | [source](https://crates.io/crates/dyn-clone/1.0.20) |
-| either | 1.19.0 | MIT OR Apache-2.0 | [source](https://crates.io/crates/either/1.19.0) |
 | embed_plist | 1.2.2 | MIT OR Apache-2.0 | [source](https://crates.io/crates/embed_plist/1.2.2) |
 | embed-resource | 3.0.12 | MIT | [source](https://crates.io/crates/embed-resource/3.0.12) |
 | endi | 1.1.1 | MIT | [source](https://crates.io/crates/endi/1.1.1) |
@@ -310,8 +307,6 @@ Pyxsis is MIT licensed. Dependencies retain their own licenses. This inventory i
 | r-efi | 5.3.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | [source](https://crates.io/crates/r-efi/5.3.0) |
 | r-efi | 6.0.0 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | [source](https://crates.io/crates/r-efi/6.0.0) |
 | raw-window-handle | 0.6.2 | MIT OR Apache-2.0 OR Zlib | [source](https://crates.io/crates/raw-window-handle/0.6.2) |
-| rayon | 1.12.0 | MIT OR Apache-2.0 | [source](https://crates.io/crates/rayon/1.12.0) |
-| rayon-core | 1.13.0 | MIT OR Apache-2.0 | [source](https://crates.io/crates/rayon-core/1.13.0) |
 | redox_syscall | 0.5.18 | MIT | [source](https://crates.io/crates/redox_syscall/0.5.18) |
 | redox_users | 0.5.3 | MIT | [source](https://crates.io/crates/redox_users/0.5.3) |
 | ref-cast | 1.0.27 | MIT OR Apache-2.0 | [source](https://crates.io/crates/ref-cast/1.0.27) |
@@ -485,7 +480,6 @@ Pyxsis is MIT licensed. Dependencies retain their own licenses. This inventory i
 | windows_x86_64_gnullvm | 0.52.6 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows_x86_64_gnullvm/0.52.6) |
 | windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows_x86_64_msvc/0.42.2) |
 | windows_x86_64_msvc | 0.52.6 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows_x86_64_msvc/0.52.6) |
-| windows-capture | 2.0.1 | MIT | [source](https://crates.io/crates/windows-capture/2.0.1) |
 | windows-collections | 0.3.2 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows-collections/0.3.2) |
 | windows-core | 0.54.0 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows-core/0.54.0) |
 | windows-core | 0.62.2 | MIT OR Apache-2.0 | [source](https://crates.io/crates/windows-core/0.62.2) |
@@ -1608,7 +1602,7 @@ TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 END OF TERMS AND CONDITIONS
 ```
 
-### arbitrary 1.5.0 (LICENSE-APACHE), async-channel 2.5.0 (LICENSE-APACHE), async-executor 1.14.0 (LICENSE-APACHE), async-io 2.6.0 (LICENSE-APACHE), async-lock 3.4.2 (LICENSE-APACHE), async-process 2.5.0 (LICENSE-APACHE), async-recursion 1.2.0 (LICENSE-APACHE), async-signal 0.2.14 (LICENSE-APACHE), async-task 4.7.1 (LICENSE-APACHE), atomic-waker 1.1.2 (LICENSE-APACHE), autocfg 1.5.1 (LICENSE-APACHE), base64 0.21.7 (LICENSE-APACHE), base64 0.22.1 (LICENSE-APACHE), base64 0.23.1 (LICENSE-APACHE), bitflags 1.3.2 (LICENSE-APACHE), bitflags 2.13.2 (LICENSE-APACHE), blocking 1.7.0 (LICENSE-APACHE), bs58 0.5.1 (LICENSE-APACHE), bumpalo 3.20.3 (LICENSE-APACHE), camino 1.2.6 (LICENSE-APACHE), cc 1.8.0 (LICENSE-APACHE), cfg-if 1.0.5 (LICENSE-APACHE), concurrent-queue 2.5.0 (LICENSE-APACHE), core-foundation 0.10.1 (LICENSE-APACHE), core-foundation-sys 0.8.7 (LICENSE-APACHE), core-graphics 0.25.0 (LICENSE-APACHE), core-graphics-types 0.2.0 (LICENSE-APACHE), coreaudio-rs 0.13.0 (LICENSE-APACHE), crossbeam-channel 0.5.17 (LICENSE-APACHE), crossbeam-deque 0.8.8 (LICENSE-APACHE), crossbeam-epoch 0.9.21 (LICENSE-APACHE), crossbeam-utils 0.8.23 (LICENSE-APACHE), derive_arbitrary 1.5.0 (LICENSE-APACHE), displaydoc 0.2.7 (LICENSE-APACHE), either 1.19.0 (LICENSE-APACHE), equivalent 1.0.2 (LICENSE-APACHE), errno 0.3.14 (LICENSE-APACHE), event-listener 5.4.2 (LICENSE-APACHE), event-listener-strategy 0.5.4 (LICENSE-APACHE), fastrand 2.5.0 (LICENSE-APACHE), filetime 0.2.29 (LICENSE-APACHE), find-msvc-tools 0.1.14 (LICENSE-APACHE), flate2 1.1.10 (LICENSE-APACHE), fnv 1.0.7 (LICENSE-APACHE), form_urlencoded 1.2.2 (LICENSE-APACHE), fs2 0.4.3 (LICENSE-APACHE), futures-lite 2.6.1 (LICENSE-APACHE), gethostname 1.1.0 (LICENSE), glob 0.3.4 (LICENSE-APACHE), global-hotkey 0.8.0 (LICENSE-APACHE), hashbrown 0.12.3 (LICENSE-APACHE), hashbrown 0.17.1 (LICENSE-APACHE), heck 0.4.1 (LICENSE-APACHE), heck 0.5.0 (LICENSE-APACHE), hermit-abi 0.5.3 (LICENSE-APACHE), html5ever 0.39.0 (LICENSE-APACHE), httparse 1.10.1 (LICENSE-APACHE), hyper-rustls 0.27.10 (LICENSE-APACHE), idna 1.1.0 (LICENSE-APACHE), idna_adapter 1.2.2 (LICENSE-APACHE), indexmap 1.9.3 (LICENSE-APACHE), indexmap 2.14.2 (LICENSE-APACHE), jni 0.21.1 (LICENSE-APACHE), js-sys 0.3.106 (LICENSE-APACHE), keyboard-types 0.7.0 (LICENSE-APACHE), keyboard-types 0.8.3 (LICENSE-APACHE), libappindicator 0.9.0 (LICENSE-APACHE), linux-raw-sys 0.12.1 (LICENSE-APACHE), lock_api 0.4.14 (LICENSE-APACHE), log 0.4.34 (LICENSE-APACHE), markup5ever 0.39.0 (LICENSE-APACHE), mime 0.3.17 (LICENSE-APACHE), muda 0.20.0 (LICENSE-APACHE), num-derive 0.4.2 (LICENSE-APACHE), num-traits 0.2.19 (LICENSE-APACHE), once_cell 1.21.4 (LICENSE-APACHE), openssl-probe 0.2.1 (LICENSE-APACHE), ordered-stream 0.2.0 (LICENSE-APACHE), parking 2.2.1 (LICENSE-APACHE), parking_lot 0.12.5 (LICENSE-APACHE), parking_lot_core 0.9.12 (LICENSE-APACHE), percent-encoding 2.3.2 (LICENSE-APACHE), piper 0.2.5 (LICENSE-APACHE), pkg-config 0.3.34 (LICENSE-APACHE), png 0.17.16 (LICENSE-APACHE), png 0.18.1 (LICENSE-APACHE), polling 3.11.0 (LICENSE-APACHE), rayon 1.12.0 (LICENSE-APACHE), rayon-core 1.13.0 (LICENSE-APACHE), regex 1.13.1 (LICENSE-APACHE), regex-automata 0.4.18 (LICENSE-APACHE), regex-syntax 0.8.11 (LICENSE-APACHE), rustc_version 0.4.1 (LICENSE-APACHE), rustix 1.1.5 (LICENSE-APACHE), rustls 0.23.45 (LICENSE-APACHE), rustls-native-certs 0.8.4 (LICENSE-APACHE), scopeguard 1.2.0 (LICENSE-APACHE), security-framework 3.7.0 (LICENSE-APACHE), security-framework-sys 2.17.0 (LICENSE-APACHE), serde_with 3.24.0 (LICENSE-APACHE), serde_with_macros 3.24.0 (LICENSE-APACHE), servo_arc 0.4.3 (LICENSE-APACHE), signal-hook-registry 1.4.8 (LICENSE-APACHE), simd_cesu8 1.2.0 (LICENSE-APACHE), smallvec 1.16.3 (LICENSE-APACHE), socket2 0.6.5 (LICENSE-APACHE), stable_deref_trait 1.2.1 (LICENSE-APACHE), string_cache 0.9.0 (LICENSE-APACHE), string_cache_codegen 0.6.1 (LICENSE-APACHE), syn 1.0.109 (LICENSE-APACHE), system-deps 6.2.2 (LICENSE-APACHE), tao-macros 0.1.4 (LICENSE-APACHE), tar 0.4.46 (LICENSE-APACHE), tempfile 3.27.0 (LICENSE-APACHE), tendril 0.5.1 (LICENSE-APACHE), toml_datetime 0.6.3 (LICENSE-APACHE), tray-icon 0.25.1 (LICENSE-APACHE), unicode-segmentation 1.13.3 (LICENSE-APACHE), url 2.5.8 (LICENSE-APACHE), uuid 1.28.0 (LICENSE-APACHE), version_check 0.9.5 (LICENSE-APACHE), wasi 0.11.1+wasi-snapshot-preview1 (LICENSE-APACHE), wasip2 1.0.4+wasi-0.2.12 (LICENSE-APACHE), wasm-bindgen 0.2.129 (LICENSE-APACHE), wasm-bindgen-futures 0.4.79 (LICENSE-APACHE), wasm-bindgen-macro 0.2.129 (LICENSE-APACHE), wasm-bindgen-macro-support 0.2.129 (LICENSE-APACHE), wasm-bindgen-shared 0.2.129 (LICENSE-APACHE), web_atoms 0.2.6 (LICENSE-APACHE), web-sys 0.3.106 (LICENSE-APACHE), window-vibrancy 0.8.1 (LICENSE-APACHE), wit-bindgen 0.57.1 (LICENSE-APACHE), wry 0.57.0 (LICENSE-APACHE), xattr 1.6.1 (LICENSE-APACHE)
+### arbitrary 1.5.0 (LICENSE-APACHE), async-channel 2.5.0 (LICENSE-APACHE), async-executor 1.14.0 (LICENSE-APACHE), async-io 2.6.0 (LICENSE-APACHE), async-lock 3.4.2 (LICENSE-APACHE), async-process 2.5.0 (LICENSE-APACHE), async-recursion 1.2.0 (LICENSE-APACHE), async-signal 0.2.14 (LICENSE-APACHE), async-task 4.7.1 (LICENSE-APACHE), atomic-waker 1.1.2 (LICENSE-APACHE), autocfg 1.5.1 (LICENSE-APACHE), base64 0.21.7 (LICENSE-APACHE), base64 0.22.1 (LICENSE-APACHE), base64 0.23.1 (LICENSE-APACHE), bitflags 1.3.2 (LICENSE-APACHE), bitflags 2.13.2 (LICENSE-APACHE), blocking 1.7.0 (LICENSE-APACHE), bs58 0.5.1 (LICENSE-APACHE), bumpalo 3.20.3 (LICENSE-APACHE), camino 1.2.6 (LICENSE-APACHE), cc 1.8.0 (LICENSE-APACHE), cfg-if 1.0.5 (LICENSE-APACHE), concurrent-queue 2.5.0 (LICENSE-APACHE), core-foundation 0.10.1 (LICENSE-APACHE), core-foundation-sys 0.8.7 (LICENSE-APACHE), core-graphics 0.25.0 (LICENSE-APACHE), core-graphics-types 0.2.0 (LICENSE-APACHE), coreaudio-rs 0.13.0 (LICENSE-APACHE), crossbeam-channel 0.5.17 (LICENSE-APACHE), crossbeam-utils 0.8.23 (LICENSE-APACHE), derive_arbitrary 1.5.0 (LICENSE-APACHE), displaydoc 0.2.7 (LICENSE-APACHE), equivalent 1.0.2 (LICENSE-APACHE), errno 0.3.14 (LICENSE-APACHE), event-listener 5.4.2 (LICENSE-APACHE), event-listener-strategy 0.5.4 (LICENSE-APACHE), fastrand 2.5.0 (LICENSE-APACHE), filetime 0.2.29 (LICENSE-APACHE), find-msvc-tools 0.1.14 (LICENSE-APACHE), flate2 1.1.10 (LICENSE-APACHE), fnv 1.0.7 (LICENSE-APACHE), form_urlencoded 1.2.2 (LICENSE-APACHE), fs2 0.4.3 (LICENSE-APACHE), futures-lite 2.6.1 (LICENSE-APACHE), gethostname 1.1.0 (LICENSE), glob 0.3.4 (LICENSE-APACHE), global-hotkey 0.8.0 (LICENSE-APACHE), hashbrown 0.12.3 (LICENSE-APACHE), hashbrown 0.17.1 (LICENSE-APACHE), heck 0.4.1 (LICENSE-APACHE), heck 0.5.0 (LICENSE-APACHE), hermit-abi 0.5.3 (LICENSE-APACHE), html5ever 0.39.0 (LICENSE-APACHE), httparse 1.10.1 (LICENSE-APACHE), hyper-rustls 0.27.10 (LICENSE-APACHE), idna 1.1.0 (LICENSE-APACHE), idna_adapter 1.2.2 (LICENSE-APACHE), indexmap 1.9.3 (LICENSE-APACHE), indexmap 2.14.2 (LICENSE-APACHE), jni 0.21.1 (LICENSE-APACHE), js-sys 0.3.106 (LICENSE-APACHE), keyboard-types 0.7.0 (LICENSE-APACHE), keyboard-types 0.8.3 (LICENSE-APACHE), libappindicator 0.9.0 (LICENSE-APACHE), linux-raw-sys 0.12.1 (LICENSE-APACHE), lock_api 0.4.14 (LICENSE-APACHE), log 0.4.34 (LICENSE-APACHE), markup5ever 0.39.0 (LICENSE-APACHE), mime 0.3.17 (LICENSE-APACHE), muda 0.20.0 (LICENSE-APACHE), num-derive 0.4.2 (LICENSE-APACHE), num-traits 0.2.19 (LICENSE-APACHE), once_cell 1.21.4 (LICENSE-APACHE), openssl-probe 0.2.1 (LICENSE-APACHE), ordered-stream 0.2.0 (LICENSE-APACHE), parking 2.2.1 (LICENSE-APACHE), parking_lot 0.12.5 (LICENSE-APACHE), parking_lot_core 0.9.12 (LICENSE-APACHE), percent-encoding 2.3.2 (LICENSE-APACHE), piper 0.2.5 (LICENSE-APACHE), pkg-config 0.3.34 (LICENSE-APACHE), png 0.17.16 (LICENSE-APACHE), png 0.18.1 (LICENSE-APACHE), polling 3.11.0 (LICENSE-APACHE), regex 1.13.1 (LICENSE-APACHE), regex-automata 0.4.18 (LICENSE-APACHE), regex-syntax 0.8.11 (LICENSE-APACHE), rustc_version 0.4.1 (LICENSE-APACHE), rustix 1.1.5 (LICENSE-APACHE), rustls 0.23.45 (LICENSE-APACHE), rustls-native-certs 0.8.4 (LICENSE-APACHE), scopeguard 1.2.0 (LICENSE-APACHE), security-framework 3.7.0 (LICENSE-APACHE), security-framework-sys 2.17.0 (LICENSE-APACHE), serde_with 3.24.0 (LICENSE-APACHE), serde_with_macros 3.24.0 (LICENSE-APACHE), servo_arc 0.4.3 (LICENSE-APACHE), signal-hook-registry 1.4.8 (LICENSE-APACHE), simd_cesu8 1.2.0 (LICENSE-APACHE), smallvec 1.16.3 (LICENSE-APACHE), socket2 0.6.5 (LICENSE-APACHE), stable_deref_trait 1.2.1 (LICENSE-APACHE), string_cache 0.9.0 (LICENSE-APACHE), string_cache_codegen 0.6.1 (LICENSE-APACHE), syn 1.0.109 (LICENSE-APACHE), system-deps 6.2.2 (LICENSE-APACHE), tao-macros 0.1.4 (LICENSE-APACHE), tar 0.4.46 (LICENSE-APACHE), tempfile 3.27.0 (LICENSE-APACHE), tendril 0.5.1 (LICENSE-APACHE), toml_datetime 0.6.3 (LICENSE-APACHE), tray-icon 0.25.1 (LICENSE-APACHE), unicode-segmentation 1.13.3 (LICENSE-APACHE), url 2.5.8 (LICENSE-APACHE), uuid 1.28.0 (LICENSE-APACHE), version_check 0.9.5 (LICENSE-APACHE), wasi 0.11.1+wasi-snapshot-preview1 (LICENSE-APACHE), wasip2 1.0.4+wasi-0.2.12 (LICENSE-APACHE), wasm-bindgen 0.2.129 (LICENSE-APACHE), wasm-bindgen-futures 0.4.79 (LICENSE-APACHE), wasm-bindgen-macro 0.2.129 (LICENSE-APACHE), wasm-bindgen-macro-support 0.2.129 (LICENSE-APACHE), wasm-bindgen-shared 0.2.129 (LICENSE-APACHE), web_atoms 0.2.6 (LICENSE-APACHE), web-sys 0.3.106 (LICENSE-APACHE), window-vibrancy 0.8.1 (LICENSE-APACHE), wit-bindgen 0.57.1 (LICENSE-APACHE), wry 0.57.0 (LICENSE-APACHE), xattr 1.6.1 (LICENSE-APACHE)
 
 ```text
 Apache License
@@ -3965,7 +3959,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
-### coreaudio-rs 0.13.0 (LICENSE-MIT), either 1.19.0 (LICENSE-MIT), serde_with 3.24.0 (LICENSE-MIT), serde_with_macros 3.24.0 (LICENSE-MIT)
+### coreaudio-rs 0.13.0 (LICENSE-MIT), serde_with 3.24.0 (LICENSE-MIT), serde_with_macros 3.24.0 (LICENSE-MIT)
 
 ```text
 Copyright (c) 2015
@@ -4257,7 +4251,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### crossbeam-channel 0.5.17 (LICENSE-MIT), crossbeam-deque 0.8.8 (LICENSE-MIT), crossbeam-epoch 0.9.21 (LICENSE-MIT), crossbeam-utils 0.8.23 (LICENSE-MIT)
+### crossbeam-channel 0.5.17 (LICENSE-MIT), crossbeam-utils 0.8.23 (LICENSE-MIT)
 
 ```text
 The MIT License (MIT)
@@ -10796,36 +10790,6 @@ Permission is granted to anyone to use this software for any purpose, including 
 3. This notice may not be removed or altered from any source distribution.
 ```
 
-### rayon 1.12.0 (LICENSE-MIT), rayon-core 1.13.0 (LICENSE-MIT)
-
-```text
-Copyright (c) 2010 The Rust Project Developers
-
-Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated
-documentation files (the "Software"), to deal in the
-Software without restriction, including without
-limitation the rights to use, copy, modify, merge,
-publish, distribute, sublicense, and/or sell copies of
-the Software, and to permit persons to whom the Software
-is furnished to do so, subject to the following
-conditions:
-
-The above copyright notice and this permission notice
-shall be included in all copies or substantial portions
-of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
-ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
-TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
-IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-DEALINGS IN THE SOFTWARE.
-```
-
 ### redox_syscall 0.5.18 (LICENSE)
 
 ```text
@@ -14519,32 +14483,6 @@ MIT License
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE
-```
-
-### windows-capture 2.0.1 (LICENCE)
-
-```text
-MIT License
-
-Copyright (c) 2023 NiiightmareXD
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 ```
 
 ### winnow 0.5.40 (LICENSE-MIT), winnow 1.0.4 (LICENSE-MIT)

@@ -1,6 +1,6 @@
 {
   "name": "pyxsis",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,8 +13,8 @@
     "test": "cargo test -p pyxsis-core -p pyxsis-cli --locked",
     "verify:release": "node scripts/verify-release.mjs",
     "test:installer-hooks": "node scripts/test-installer-hooks.mjs",
-    "format": "prettier --write src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json",
-    "format:check": "prettier --check src scripts .github index.html package.json tsconfig.json src-tauri/tauri.conf.json"
+    "format": "prettier --write src scripts .github vite.config.ts index.html package.json tsconfig.json src-tauri/tauri.conf.json",
+    "format:check": "prettier --check src scripts .github vite.config.ts index.html package.json tsconfig.json src-tauri/tauri.conf.json"
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.3",

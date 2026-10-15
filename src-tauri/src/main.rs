@@ -9,7 +9,7 @@ use std::{
     },
 };
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::TrayIconBuilder,
     Emitter, Manager,
 };
@@ -28,6 +28,7 @@ struct Snapshot {
     history: Vec<store::Artifact>,
     recording: Option<recording::Session>,
     shortcut_error: Option<String>,
+    start_with_windows: bool,
 }
 fn error(e: impl std::fmt::Display) -> String {
     e.to_string()
@@ -43,6 +44,8 @@ fn worker() -> Result<PathBuf, String> {
 #[tauri::command]
 fn snapshot(app: tauri::AppHandle) -> Result<Snapshot, String> {
     Ok(Snapshot {
+        start_with_windows: pyxsis_core::startup::enabled(&std::env::current_exe().map_err(error)?)
+            .map_err(error)?,
         preferences: store::preferences().map_err(error)?,
         history: store::history().map_err(error)?,
         recording: recording::status().map_err(error)?,
@@ -70,16 +73,16 @@ async fn capture(app: tauri::AppHandle, kind: String) -> Result<serde_json::Valu
     let result =
         tauri::async_runtime::spawn_blocking(move || -> Result<serde_json::Value, String> {
             let prefs = store::preferences().map_err(error)?;
-            let region = match desktop::select_region().map_err(error)? {
-                Some(r) => r,
-                None => return Ok(serde_json::json!({"cancelled":true})),
-            };
             if kind == "screenshot" {
-                serde_json::to_value(
-                    desktop::screenshot(region, None, prefs.copy_to_clipboard).map_err(error)?,
-                )
-                .map_err(error)
+                match desktop::select_screenshot(None, prefs.copy_to_clipboard).map_err(error)? {
+                    Some(artifact) => serde_json::to_value(artifact).map_err(error),
+                    None => Ok(serde_json::json!({"cancelled":true})),
+                }
             } else if kind == "recording" {
+                let region = match desktop::select_region().map_err(error)? {
+                    Some(region) => region,
+                    None => return Ok(serde_json::json!({"cancelled":true})),
+                };
                 serde_json::to_value(
                     recording::start(&worker()?, region, None, prefs.fps, prefs.system_audio, 300)
                         .map_err(error)?,
@@ -142,6 +145,11 @@ fn save_preferences(app: tauri::AppHandle, preferences: store::Preferences) -> R
     }
     *state.shortcut_error.lock().map_err(error)? = None;
     Ok(())
+}
+#[tauri::command]
+fn set_start_with_windows(enabled: bool) -> Result<(), String> {
+    pyxsis_core::startup::set_enabled(&std::env::current_exe().map_err(error)?, enabled)
+        .map_err(error)
 }
 #[tauri::command]
 fn open_capture(id: String) -> Result<(), String> {
@@ -276,7 +284,10 @@ fn main() {
     desktop::init_dpi();
     tauri::Builder::default()
         .manage(AppState::default())
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
+        .plugin(tauri_plugin_single_instance::init(|app, args, _| {
+            if args.iter().any(|a| a == "--background") {
+                return;
+            }
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
@@ -306,6 +317,7 @@ fn main() {
             capture,
             stop_recording,
             save_preferences,
+            set_start_with_windows,
             open_capture,
             open_folder,
             begin_update,
@@ -330,7 +342,9 @@ fn main() {
             let folder =
                 MenuItem::with_id(app, "folder", "Open captures folder", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Pyxsis", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&capture, &record, &show, &folder, &quit])?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let menu =
+                Menu::with_items(app, &[&capture, &record, &separator, &show, &folder, &quit])?;
             TrayIconBuilder::with_id("pyxsis")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Pyxsis · screenshots & recordings")
@@ -374,9 +388,9 @@ fn main() {
                 .build(app)?;
             watch_recording_status(app.handle().clone());
             let hidden = std::env::args().any(|a| a == "--background");
-            if hidden {
+            if !hidden {
                 if let Some(window) = app.get_webview_window("main") {
-                    window.hide()?;
+                    window.show()?;
                 }
             }
             store::log_event("app.started", &app.package_info().version.to_string());
