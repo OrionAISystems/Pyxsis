@@ -27,6 +27,12 @@ Choose a different root during interactive installation or later in Settings. Ex
 
 Shortcuts are configurable and registration failures are reported. Enable **Start with Windows** in Settings to launch quietly in the tray when you sign in. This per-user setting applies immediately; Windows Startup apps can override it. It is off until enabled. Updates preserve registration, and uninstall removes the entry for that installation.
 
+## Annotate screenshots
+
+Choose **Annotate** beside a screenshot in **Recent captures**, or use **Annotate last screenshot** from the tray after a hotkey capture. Use arrows, rectangles, the freehand pen, and text labels to mark the image. Set the color and size before placing a mark. Use **Undo** and **Redo** or Ctrl+Z and Ctrl+Shift+Z to revise your work.
+
+**Copy annotated image** puts the full-resolution result on the clipboard. **Save a copy** writes an `-annotated.png` to the configured Pictures folder. The original PNG is preserved. Marks are editable through undo and redo while the editor is open. The exported PNG is a flattened image.
+
 ## Agent / CLI use
 
 `pyxsis-cli.exe` is installed beside `pyxsis.exe`. The installer automatically adds that installation folder to your user PATH. Open a new terminal (or restart an agent host such as Codex) after installation to pick up the change; existing processes can use its absolute path immediately. Updates avoid duplicate entries, and uninstall removes only the entry added by the installer. It works without running the GUI. There is no network service, MCP listener, account, telemetry, or upload path. In-app update checks are explicit user actions against GitHub.
@@ -37,6 +43,7 @@ pyxsis-cli capture --monitor 1 --output screenshot.png
 pyxsis-cli capture --window 123456 --output window.png
 pyxsis-cli capture --region=-1920,100,1280,720 --output region.png
 pyxsis-cli capture --select --clipboard
+pyxsis-cli annotate --input screenshot.png --spec annotations.json --output feedback.png
 pyxsis-cli record start --monitor 1 --system-audio --duration 15
 pyxsis-cli record status
 pyxsis-cli record stop
@@ -47,6 +54,24 @@ pyxsis-cli info
 Command results are one JSON object on stdout; operational failures are JSON on stderr with exit code 1. Argument-parser/help output follows Clap conventions. Capture results include an absolute local path, dimensions, timestamp, byte count, artifact ID, and the physical source `region` and `coordinate_space`. Use the returned origin to map image pixels back to desktop coordinates. Idle recording status returns `{"state":"idle","session":null}`. Recording start returns after the detached worker is ready. Stop waits for finalization (up to 60 seconds); if it times out, inspect status before trying anything destructive. Recording status also includes the worker PID and terminal `metrics`: frames submitted to the encoder, missed acquisition intervals, capture/acquisition/finalization time in milliseconds, process CPU time across capture and finalization, and peak sampled private bytes during capture. These are submission and resource measurements, not a count of encoded or dropped output frames. A single recording is allowed per Windows user. The app and CLI see the same session and history.
 
 Coordinates are **physical desktop pixels**, including negative monitor origins. Monitor IDs come from `targets` and can change after display topology changes. Window matching accepts a numeric ID or a unique title substring. Window captures use the window's visible desktop rectangle; overlapping windows are included, and minimized windows are omitted. Recording a window selects its rectangle at start; it does not follow a moving window. PNGs are native resolution. MP4 dimensions round down to even pixels for H.264.
+
+### CLI annotation format
+
+`annotate` runs with the app closed. It reads a PNG and a versioned JSON file, then writes a separate PNG at the original dimensions. The JSON result includes its absolute `path`, `width`, `height`, `bytes`, and `coordinate_space: "image_pixels"`. The command refuses to overwrite an existing file.
+
+```json
+{
+  "version": 1,
+  "marks": [
+    { "type": "arrow", "from": [80, 65], "to": [200, 115], "color": "#FF526B", "width": 5 },
+    { "type": "rectangle", "from": [230, 85], "to": [380, 140], "color": "#BAA6FF", "width": 4 },
+    { "type": "freehand", "points": [[80, 150], [96, 158], [116, 152]], "color": "#39D7A2", "width": 4 },
+    { "type": "text", "at": [80, 30], "text": "Updated spacing", "color": "#FFFFFF", "size": 20 }
+  ]
+}
+```
+
+Marks render in array order. Points are `[x, y]` in original image pixels, measured from the top-left. For text, `at` is the top-left of the label's line. Use `#RRGGBB` colors, stroke widths from 1 to 128 pixels, and text sizes from 1 to 512 pixels. A spec supports up to 256 marks, 12,000 total freehand points, and 200 characters per single-line text label.
 
 ### Agent skill
 
@@ -65,7 +90,7 @@ The first capture backend uses reusable GDI surfaces and a native Media Foundati
 - System audio uses the default playback endpoint at start. Changing/disconnecting it can fail the recording; already encoded media is finalized into the partial file.
 - Record to a local drive. UNC recording destinations are rejected; screenshots can use writable network destinations.
 - A worker crash is surfaced as `interrupted`. A `.pyxsis-<id>.partial.mp4` may remain beside the requested output. Abrupt process termination may leave an MP4 that cannot be recovered. Do not delete a partial file until the worker has exited.
-- This release has no annotation editor, microphone mixing, or cursor overlay.
+- Microphone mixing and cursor overlay are unavailable.
 
 ## Win + Shift + S
 

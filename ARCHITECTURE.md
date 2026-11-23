@@ -20,6 +20,12 @@ Tauri window / native tray / configurable shortcuts       Agent / terminal
 
 The capture surface is a deliberate first backend: reusable GDI DIB memory provides straightforward native pixels across monitor boundaries. It does not claim DXGI/WGC GPU throughput. A future backend can replace frame acquisition behind `Surface` without changing command results, session state, or GUI ownership. Native Windows media facilities encode the MP4; there is no FFmpeg sidecar or managed runtime. The UI uses TypeScript and plain DOM/CSS, keeping the frontend bundle small.
 
+## Screenshot annotation
+
+`annotation.rs` owns the versioned mark format, image-space validation, and PNG export. It builds an SVG from validated marks and shapes text with local system fonts using usvg. The Tauri editor displays the resulting vector paths over the original image, and both adapters rasterize the same paths through resvg when exporting. The renderer clips at the image bounds and composites at native resolution. SVG is generated internally from mark data.
+
+Annotation starts from a saved screenshot. The CLI accepts an explicit PNG path. The Tauri adapter resolves a screenshot ID through local history and sends the PNG to the WebView over IPC. The editor owns the in-progress marks, zoom, and undo history. Save publishes a separate PNG through a same-directory temporary file with no overwrite. Copy renders on demand and uses the native image clipboard. Original capture files and their history records are immutable. Exports are flattened PNGs outside capture history.
+
 ## Recording ownership
 
 `record start` serializes launch with `start.lock`, checks `recording.lock`, atomically writes a session, and launches a hidden CLI worker with **handle inheritance disabled**. This matters for agents: inherited pipe handles can otherwise keep command output open until the recording ends. The worker owns `recording.lock` for its lifetime. The parent waits for readiness without owning the recording, then returns JSON.

@@ -30,6 +30,10 @@ Use the installed Pyxsis CLI. A successful capture produces a local artifact, an
 
 Regions use physical desktop pixels, including negative monitor origins. Use `targets` to derive coordinates instead of guessing from browser CSS dimensions. Read only the window metadata needed for target discovery; keep unrelated titles, capture history, and desktop content out of reports. Captures stay local unless the user explicitly requests sharing.
 
+## Annotating a screenshot
+
+To give visual feedback, inspect the captured PNG, then create a version 1 JSON spec with marks positioned in original image pixels from the image's top-left. Use `pyxsis-cli annotate --input <original.png> --spec <annotations.json> --output <feedback.png>`. Pass a fresh output path and check the JSON result and rendered PNG. Keep the original alongside the annotated copy. See the repository README for the supported mark types and example spec.
+
 ## Recordings
 
 For a requested screen recording, read [references/recording.md](references/recording.md). Screenshot requests authorize a still image; recording and system audio require the corresponding user request.

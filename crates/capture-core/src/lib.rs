@@ -1,3 +1,4 @@
+pub mod annotation;
 pub mod desktop;
 mod encoder;
 pub mod recording;

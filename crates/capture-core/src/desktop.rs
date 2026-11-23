@@ -322,7 +322,7 @@ fn save_screenshot(
     encoder.set_depth(png::BitDepth::Eight);
     encoder.write_header()?.write_image_data(&rgba)?;
     let warnings = if clipboard {
-        copy_bitmap(pixels, region)
+        copy_bitmap(pixels, region, null_mut())
             .err()
             .map(|e| vec![e.to_string()])
             .unwrap_or_default()
@@ -347,7 +347,7 @@ fn save_screenshot(
     store::log_event("capture.saved", &artifact.id);
     Ok(artifact)
 }
-fn copy_bitmap(pixels: &[u8], region: Region) -> Result<()> {
+pub(crate) fn copy_bitmap(pixels: &[u8], region: Region, owner: HWND) -> Result<()> {
     unsafe {
         let size = std::mem::size_of::<BITMAPINFOHEADER>() + pixels.len();
         let memory = GlobalAlloc(GMEM_MOVEABLE, size);
@@ -377,7 +377,7 @@ fn copy_bitmap(pixels: &[u8], region: Region) -> Result<()> {
         GlobalUnlock(memory);
         let mut opened = false;
         for _ in 0..10 {
-            if OpenClipboard(null_mut()) != 0 {
+            if OpenClipboard(owner) != 0 {
                 opened = true;
                 break;
             }
@@ -385,14 +385,14 @@ fn copy_bitmap(pixels: &[u8], region: Region) -> Result<()> {
         }
         if !opened {
             GlobalFree(memory);
-            bail!("Screenshot saved, but another application is holding the clipboard");
+            bail!("Another application is holding the clipboard");
         }
         EmptyClipboard();
         let result = SetClipboardData(8, memory);
         CloseClipboard();
         if result.is_null() {
             GlobalFree(memory);
-            bail!("Screenshot saved, but clipboard copy failed");
+            bail!("Could not copy the image to the clipboard");
         }
         Ok(())
     }

@@ -159,6 +159,12 @@ pub fn remember(artifact: &Artifact) -> Result<()> {
         artifact,
     )
 }
+pub fn artifact(id: &str) -> Result<Artifact> {
+    let id = uuid::Uuid::parse_str(id).context("Invalid capture ID")?;
+    let path = data_dir().join("history").join(format!("{id}.json"));
+    let file = fs::File::open(path).context("Capture not found in local history")?;
+    Ok(serde_json::from_reader(file)?)
+}
 pub fn history() -> Result<Vec<Artifact>> {
     let dir = data_dir().join("history");
     if !dir.exists() {

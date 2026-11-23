@@ -1,7 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use pyxsis_core::{desktop, recording, store};
+use pyxsis_core::{annotation, desktop, recording, store};
 use serde::Serialize;
 use std::{
+    io::Read,
     path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -21,6 +22,7 @@ struct AppState {
     update_guard: Mutex<Option<std::fs::File>>,
     settings: Mutex<()>,
     shortcut_error: Mutex<Option<String>>,
+    annotation_request: Mutex<Option<String>>,
 }
 #[derive(Serialize)]
 struct Snapshot {
@@ -153,12 +155,99 @@ fn set_start_with_windows(enabled: bool) -> Result<(), String> {
 }
 #[tauri::command]
 fn open_capture(id: String) -> Result<(), String> {
-    let artifact = store::history()
+    let artifact = store::artifact(&id).map_err(error)?;
+    desktop::open_path(&artifact.path).map_err(error)
+}
+fn screenshot_artifact(id: &str) -> Result<store::Artifact, String> {
+    let artifact = store::artifact(id).map_err(error)?;
+    if artifact.kind != "screenshot" {
+        return Err("Only screenshots can be annotated".into());
+    }
+    Ok(artifact)
+}
+#[tauri::command]
+async fn annotation_source(id: String) -> Result<tauri::ipc::Response, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let artifact = screenshot_artifact(&id)?;
+        let file = std::fs::File::open(artifact.path).map_err(error)?;
+        // A native screenshot is bounded to 40 MP of RGBA pixels.
+        const MAX_PNG_BYTES: u64 = 192 * 1024 * 1024;
+        let mut bytes = Vec::new();
+        file.take(MAX_PNG_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(error)?;
+        if bytes.len() as u64 > MAX_PNG_BYTES {
+            return Err("Screenshot file exceeds the editor's size limit".into());
+        }
+        Ok(tauri::ipc::Response::new(bytes))
+    })
+    .await
+    .map_err(error)?
+}
+#[tauri::command]
+async fn annotation_preview(
+    spec: annotation::Spec,
+    width: u32,
+    height: u32,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        annotation::preview(&spec, width, height).map_err(error)
+    })
+    .await
+    .map_err(error)?
+}
+#[tauri::command]
+async fn save_annotation(id: String, spec: annotation::Spec) -> Result<annotation::Export, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let artifact = screenshot_artifact(&id)?;
+        let image = annotation::render(&artifact.path, &spec).map_err(error)?;
+        let output = store::output_path("screenshot", None).map_err(error)?;
+        let stem = output.file_stem().unwrap_or_default().to_string_lossy();
+        image
+            .save(output.with_file_name(format!("{stem}-annotated.png")))
+            .map_err(error)
+    })
+    .await
+    .map_err(error)?
+}
+#[tauri::command]
+async fn copy_annotation(
+    window: tauri::Window,
+    id: String,
+    spec: annotation::Spec,
+) -> Result<(), String> {
+    let owner = window.hwnd().map_err(error)?.0 as isize;
+    tauri::async_runtime::spawn_blocking(move || {
+        let artifact = screenshot_artifact(&id)?;
+        annotation::render(&artifact.path, &spec)
+            .map_err(error)?
+            .copy_to_clipboard(owner)
+            .map_err(error)
+    })
+    .await
+    .map_err(error)?
+}
+#[tauri::command]
+fn take_annotation_request(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    Ok(app
+        .state::<AppState>()
+        .annotation_request
+        .lock()
+        .map_err(error)?
+        .take())
+}
+fn annotate_latest(app: &tauri::AppHandle) -> Result<(), String> {
+    let id = store::history()
         .map_err(error)?
         .into_iter()
-        .find(|a| a.id == id)
-        .ok_or("Capture not found in local history")?;
-    desktop::open_path(&artifact.path).map_err(error)
+        .find(|artifact| artifact.kind == "screenshot" && artifact.path.is_file())
+        .ok_or("Take a screenshot to annotate it.")?
+        .id;
+    *app.state::<AppState>()
+        .annotation_request
+        .lock()
+        .map_err(error)? = Some(id);
+    app.emit("annotation-requested", ()).map_err(error)
 }
 #[tauri::command]
 fn open_folder() -> Result<(), String> {
@@ -319,6 +408,11 @@ fn main() {
             save_preferences,
             set_start_with_windows,
             open_capture,
+            annotation_source,
+            annotation_preview,
+            save_annotation,
+            copy_annotation,
+            take_annotation_request,
             open_folder,
             begin_update,
             end_update
@@ -339,12 +433,23 @@ fn main() {
                 None::<&str>,
             )?;
             let show = MenuItem::with_id(app, "show", "Open Pyxsis", true, None::<&str>)?;
+            let annotate = MenuItem::with_id(
+                app,
+                "annotate",
+                "Annotate last screenshot",
+                true,
+                None::<&str>,
+            )?;
             let folder =
                 MenuItem::with_id(app, "folder", "Open captures folder", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Pyxsis", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
-            let menu =
-                Menu::with_items(app, &[&capture, &record, &separator, &show, &folder, &quit])?;
+            let menu = Menu::with_items(
+                app,
+                &[
+                    &capture, &record, &annotate, &separator, &show, &folder, &quit,
+                ],
+            )?;
             TrayIconBuilder::with_id("pyxsis")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("Pyxsis · screenshots & recordings")
@@ -355,6 +460,15 @@ fn main() {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "annotate" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                        if let Err(message) = annotate_latest(app) {
+                            let _ = app.emit("app-error", message);
                         }
                     }
                     "folder" => {

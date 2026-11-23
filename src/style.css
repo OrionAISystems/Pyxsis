@@ -633,3 +633,241 @@ footer {
     transition: none !important;
   }
 }
+
+.capture-entry {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #242630;
+}
+.capture-entry .capture-row {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.capture-entry .file-icon,
+.capture-annotate {
+  flex-shrink: 0;
+}
+.capture-annotate.button {
+  min-height: 36px;
+  padding: 7px 11px;
+}
+.annotation-editor {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  height: 100vh;
+  padding: 22px clamp(14px, 2.5vw, 36px) 12px;
+}
+.annotation-heading {
+  justify-content: flex-start;
+  gap: 15px;
+  padding-bottom: 17px;
+}
+.annotation-heading > .button {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.annotation-name {
+  flex: 1;
+  min-width: 0;
+}
+.annotation-name h1 {
+  font-size: clamp(21px, 3.2vw, 30px);
+  letter-spacing: -0.025em;
+}
+.annotation-name p {
+  margin: 4px 0 0;
+  color: #a1a3b0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.annotation-actions,
+.annotation-toolbar,
+.annotation-tools,
+.annotation-style,
+.annotation-history {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.annotation-actions {
+  flex-wrap: wrap;
+}
+.annotation-toolbar {
+  min-height: 66px;
+  gap: 13px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+}
+.annotation-editor [hidden] {
+  display: none;
+}
+.annotation-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  min-height: 38px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #d6d7e0;
+  font-size: 12px;
+}
+.annotation-tool svg {
+  width: 17px;
+  height: 17px;
+}
+.annotation-tool:hover {
+  background: #1e1f27;
+}
+.annotation-tool[aria-pressed='true'] {
+  background: #272431;
+  border-color: #4d4269;
+  color: #d9caff;
+}
+.annotation-style {
+  border-inline: 1px solid #282930;
+  padding-inline: 12px;
+  gap: 12px;
+}
+.annotation-style label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.annotation-style input,
+.annotation-toolbar select {
+  height: 36px;
+  margin: 0;
+  padding: 5px 7px;
+  width: auto;
+}
+.annotation-style input[type='color'] {
+  width: 32px;
+  padding: 4px;
+  cursor: pointer;
+}
+.annotation-history .button {
+  min-height: 36px;
+  padding: 5px 9px;
+}
+.annotation-zoom {
+  margin-left: auto;
+}
+.annotation-text {
+  display: flex;
+  width: min(100%, 430px);
+  align-items: center;
+  gap: 11px;
+  margin: 0 0 12px;
+}
+.annotation-text input {
+  flex: 1;
+  width: 0;
+  margin: 0;
+}
+.annotation-viewport {
+  position: relative;
+  display: flex;
+  flex: 1;
+  height: 0;
+  min-height: 240px;
+  padding: 16px;
+  overflow: auto;
+  background: #16171d;
+  border: 1px solid #2c2e38;
+  border-radius: 8px;
+}
+.annotation-image {
+  position: relative;
+  flex: none;
+  margin: auto;
+  box-shadow: 0 12px 32px #0006;
+  touch-action: none;
+  cursor: crosshair;
+  user-select: none;
+}
+.annotation-source,
+.annotation-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.annotation-status {
+  min-height: 20px;
+  margin: 9px 0 0;
+  color: #b4b6c3;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.annotation-status.error {
+  color: #ffb4b4;
+}
+.annotation-dialog {
+  width: min(350px, calc(100% - 32px));
+  padding: 24px;
+  border: 1px solid #414151;
+  border-radius: 8px;
+  background: #1c1d24;
+  color: #e8e8ed;
+}
+.annotation-dialog::backdrop {
+  background: #07070cb8;
+}
+.annotation-dialog p {
+  font-size: 13px;
+  color: #b4b6c3;
+}
+.annotation-dialog form > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .annotation-heading {
+    flex-wrap: wrap;
+  }
+  .annotation-toolbar {
+    gap: 6px;
+  }
+  .annotation-tools {
+    gap: 4px;
+  }
+  .annotation-tool {
+    gap: 4px;
+    padding-inline: 5px;
+  }
+  .annotation-style {
+    border: 0;
+    padding-inline: 0;
+  }
+  .capture-row time {
+    display: none;
+  }
+}
+@media (max-width: 500px) {
+  .annotation-actions {
+    width: 100%;
+  }
+  .annotation-heading {
+    gap: 10px;
+  }
+}

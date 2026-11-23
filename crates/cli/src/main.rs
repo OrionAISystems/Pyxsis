@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use clap::{Args, Parser, Subcommand};
-use pyxsis_core::{desktop, recording, store, Region};
+use pyxsis_core::{annotation, desktop, recording, store, Region};
 use std::path::PathBuf;
 mod installer_path;
 
@@ -34,6 +34,15 @@ enum Commands {
         clipboard: bool,
         #[arg(long)]
         select: bool,
+    },
+    /// Render a versioned JSON annotation spec onto a PNG at its original resolution.
+    Annotate {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        spec: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
     },
     /// Start, stop, or inspect the per-user recording worker.
     Record {
@@ -130,6 +139,14 @@ fn run() -> Result<serde_json::Value> {
                     desktop::resolve(target.monitor, target.window.as_deref(), target.region)?;
                 serde_json::to_value(desktop::screenshot(region, output, clipboard)?)?
             }
+        }
+        Commands::Annotate {
+            input,
+            spec,
+            output,
+        } => {
+            let spec = annotation::read_spec(&spec)?;
+            serde_json::to_value(annotation::render(&input, &spec)?.save(output)?)?
         }
         Commands::Record { command } => match command {
             Record::Start {

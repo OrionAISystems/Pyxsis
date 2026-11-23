@@ -1,4 +1,5 @@
 import './style.css';
+import { mountAnnotationEditor } from './annotation';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { listen } from '@tauri-apps/api/event';
@@ -60,6 +61,40 @@ let busy = false;
 let update: Update | null = null;
 let notice = '';
 let noticeError = false;
+let annotation: { id: string; editor: ReturnType<typeof mountAnnotationEditor> } | undefined;
+function openAnnotation(id: string) {
+  if (annotation?.id === id) return;
+  const show = () => {
+    annotation?.editor.close();
+    const filename =
+      state.history
+        .find((item) => item.id === id)
+        ?.path.split(/[\\/]/)
+        .pop() ?? '';
+    const editor = mountAnnotationEditor(app, id, filename, () => {
+      annotation?.editor.close();
+      annotation = undefined;
+      tab = 'capture';
+      render();
+      document.querySelector<HTMLButtonElement>(`[data-annotate="${CSS.escape(id)}"]`)?.focus();
+    });
+    annotation = { id, editor };
+    window.scrollTo(0, 0);
+  };
+  if (annotation) annotation.editor.requestBack(show);
+  else show();
+}
+async function receiveAnnotationRequest() {
+  try {
+    const id = await invoke<string | null>('take_annotation_request');
+    if (id) {
+      await refresh();
+      openAnnotation(id);
+    }
+  } catch (error) {
+    toast(String(error), true);
+  }
+}
 const icon = (name: string) =>
   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">${({ capture: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M8 12h8m-4-4v8"/>', record: '<rect x="3" y="6" width="12" height="12" rx="3"/><path d="m15 10 6-3v10l-6-3"/>', settings: '<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="18" r="2" fill="currentColor"/>', agent: '<path d="m5 7 5 5-5 5m8 0h6"/>', folder: '<path d="M3 7V5h7l2 2h9v13H3Z"/>', arrow: '<path d="M6 18 18 6M6 6h12v12"/>', stop: '<rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor"/>', check: '<path d="m5 12 4 4L19 6"/>' } as Record<string, string>)[name] ?? ''}</svg>`;
 const esc = (s: string) =>
@@ -126,6 +161,7 @@ async function action(fn: () => Promise<unknown>, message?: string) {
   }
 }
 function render() {
+  if (annotation) return;
   app.innerHTML = `<aside class="sidebar"><div class="brand"><span class="brand-mark">${icon('capture')}</span><span>Pyxsis</span></div><div class="brand-caption">ORION AI SYSTEMS</div><nav aria-label="Main navigation">${(
     [
       ['capture', 'Capture', 'capture'],
@@ -153,6 +189,9 @@ function render() {
   );
   document.querySelector<HTMLButtonElement>('#open-folder')!.onclick = () =>
     action(() => invoke('open_folder'));
+  document.querySelectorAll<HTMLButtonElement>('[data-annotate]').forEach((button) => {
+    button.onclick = () => openAnnotation(button.dataset.annotate!);
+  });
   document.querySelectorAll<HTMLButtonElement>('[data-capture]').forEach(
     (button) =>
       (button.onclick = () =>
@@ -267,7 +306,7 @@ function captureView() {
             .slice(0, 12)
             .map(
               (a) =>
-                `<button class="capture-row" data-open="${esc(a.id)}"><span class="file-icon">${icon(a.kind === 'screenshot' ? 'capture' : 'record')}</span><span class="file-details"><strong>${esc(a.path.split(/[\\/]/).pop()!)}</strong><span>${a.width} × ${a.height} · ${a.kind === 'screenshot' ? 'PNG' : 'MP4'}${a.duration_ms ? ` · ${(a.duration_ms / 1000).toFixed(1)}s` : ''} · ${(a.bytes / 1024 / 1024).toFixed(1)} MB</span></span><time>${new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</time>${icon('arrow')}</button>`,
+                `<div class="capture-entry"><button class="capture-row" data-open="${esc(a.id)}"><span class="file-icon">${icon(a.kind === 'screenshot' ? 'capture' : 'record')}</span><span class="file-details"><strong>${esc(a.path.split(/[\\/]/).pop()!)}</strong><span>${a.width} × ${a.height} · ${a.kind === 'screenshot' ? 'PNG' : 'MP4'}${a.duration_ms ? ` · ${(a.duration_ms / 1000).toFixed(1)}s` : ''} · ${(a.bytes / 1024 / 1024).toFixed(1)} MB</span></span><time>${new Date(a.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</time>${icon('arrow')}</button>${a.kind === 'screenshot' ? `<button class="button subtle capture-annotate" data-annotate="${esc(a.id)}">Annotate</button>` : ''}</div>`,
             )
             .join('')}</div>`
         : '<div class="empty-history">Your first capture starts here.<span>Screenshots and recordings appear here after they’re saved.</span></div>'
@@ -286,6 +325,10 @@ function agentsView() {
       'pyxsis-cli capture --region 100,100,1280,720 --output region.png',
     ],
     ['Start a short recording', 'pyxsis-cli record start --monitor 1 --system-audio --duration 15'],
+    [
+      'Annotate a screenshot',
+      'pyxsis-cli annotate --input screenshot.png --spec annotations.json --output feedback.png',
+    ],
     ['Finalize the recording', 'pyxsis-cli record stop'],
   ];
   return `<section class="agent-intro"><span class="agent-symbol">${icon('agent')}</span><h2>Capture from<br>the command line.</h2><p>Use Pyxsis from a terminal or an agent. Commands return JSON with local artifact paths, dimensions, and session state.</p></section><div class="command-list">${commands.map(([label, command]) => `<section><h3>${label}</h3><div class="command"><code>${esc(command)}</code><button class="button subtle" data-copy="${esc(command)}" aria-label="Copy ${esc(label.toLowerCase())}">Copy</button></div></section>`).join('')}</div><p class="agent-note">Coordinates are physical desktop pixels. Window capture uses visible pixels and can include overlapping windows. No server or network listener is started.</p>`;
@@ -301,6 +344,8 @@ if (!preview) {
   await refresh();
   await listen<string>('app-error', (e) => toast(e.payload, true));
   await listen('capture-changed', () => refresh());
+  await listen('annotation-requested', () => void receiveAnnotationRequest());
+  void receiveAnnotationRequest();
   setInterval(() => {
     if (tab !== 'settings' && !document.hidden) void refresh();
     const elapsed = document.querySelector('#elapsed');
